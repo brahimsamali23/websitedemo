@@ -252,12 +252,12 @@
           </div>
           <div id="fname-field">
             <div class="field-label">First name *</div>
-            <input type="text" id="first-name" class="form-input" placeholder="e.g. Jordan" autocomplete="off" />
+            <input type="text" id="first-name" class="form-input" placeholder="e.g. Jordan" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly />
             <div class="field-error-msg">Please enter your first name.</div>
           </div>
           <div id="lname-field">
             <div class="field-label">Last name *</div>
-            <input type="text" id="last-name" class="form-input" placeholder="e.g. Clarke" autocomplete="off" />
+            <input type="text" id="last-name" class="form-input" placeholder="e.g. Clarke" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly />
             <div class="field-error-msg">Please enter your last name.</div>
           </div>
         </div>
@@ -265,14 +265,14 @@
         <!-- Email -->
         <div id="email-field">
           <div class="field-label">Email address *</div>
-          <input type="text" id="email" class="form-input" placeholder="you@example.com" autocomplete="off" inputmode="email" />
+          <input type="text" id="email" class="form-input" placeholder="you@example.com" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="email" readonly />
           <div class="field-error-msg">Please enter a valid email.</div>
         </div>
 
         <!-- Phone -->
         <div>
           <div class="field-label">Phone number</div>
-          <input type="text" id="phone" class="form-input" placeholder="+1 555 000 0000" autocomplete="off" inputmode="tel" />
+          <input type="text" id="phone" class="form-input" placeholder="+1 555 000 0000" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="tel" readonly />
         </div>
 
         <!-- Passport -->
@@ -830,6 +830,30 @@
       // Preserve original capitalisation of first letter
       return result.charAt(0).toUpperCase() + result.slice(1);
     }
+
+    // ── Remove readonly on first focus so autofill never fires, then stays editable ──
+    const sensitiveIds = ['first-name', 'last-name', 'email', 'phone'];
+    sensitiveIds.forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('focus', () => { el.removeAttribute('readonly'); }, { once: true });
+    });
+
+    // ── Wipe all personal data immediately when user leaves the page ───────────
+    const personalIds = ['first-name', 'last-name', 'email', 'phone', 'nationality', 'dob'];
+    function clearPersonalData() {
+      personalIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = ''; el.setAttribute('readonly', ''); }
+      });
+      // Also clear bookingData in memory
+      bookingData = {};
+    }
+
+    window.addEventListener('pagehide', clearPersonalData);
+    window.addEventListener('beforeunload', clearPersonalData);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') clearPersonalData();
+    });
 
     // ── Clear error states on typing ───────────────────────────────────────────
     ['first-name','last-name','email'].forEach(id => {

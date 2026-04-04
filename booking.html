@@ -144,6 +144,40 @@
     .field-required { border-color: rgba(239,68,68,0.5) !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.1) !important; }
     .field-error-msg { color: #F87171; font-size: 0.72rem; margin-top: 0.3rem; display: none; }
     .show-error .field-error-msg { display: block; }
+
+    /* ── Calendar date picker ── */
+    .cal-wrap { position: relative; display: block; }
+    .cal-icon { position: absolute; left: .875rem; top: 50%; transform: translateY(-50%); pointer-events: none; color: rgba(232,240,255,0.4); z-index: 1; }
+    .cal-trigger {
+      width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10);
+      color: rgba(232,240,255,0.3); padding: .75rem 1rem .75rem 2.75rem; border-radius: .75rem;
+      font-size: .9rem; font-family: 'Inter', sans-serif; cursor: pointer; text-align: left;
+      transition: border-color .2s, background .2s, box-shadow .2s; display: block;
+    }
+    .cal-trigger.filled { color: #E8F0FF; }
+    .cal-trigger:hover { background: rgba(255,255,255,.08); }
+    .cal-trigger:focus { outline: none; border-color: rgba(26,127,232,.6); background: rgba(255,255,255,.08); box-shadow: 0 0 0 3px rgba(26,127,232,.12); }
+    .cal-trigger.field-required { border-color: rgba(239,68,68,.5) !important; box-shadow: 0 0 0 3px rgba(239,68,68,.1) !important; }
+    .cal-popup {
+      position: absolute; top: calc(100% + 6px); left: 0; z-index: 300;
+      background: #0A1628; border: 1px solid rgba(26,127,232,.25); border-radius: 1rem;
+      padding: 1rem; width: 288px; box-shadow: 0 8px 32px rgba(0,0,0,.7), 0 2px 8px rgba(26,127,232,.12);
+      display: none;
+    }
+    .cal-popup.open { display: block; animation: calIn .15s ease; }
+    @keyframes calIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .875rem; }
+    .cal-title { font-family: 'Syne', sans-serif; font-weight: 700; color: white; font-size: .88rem; }
+    .cal-nav { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: rgba(232,240,255,.6); width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; line-height: 1; }
+    .cal-nav:hover { background: rgba(26,127,232,.18); border-color: rgba(26,127,232,.4); color: #3B9BFF; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+    .cal-wday { text-align: center; font-size: .63rem; color: rgba(232,240,255,.3); font-weight: 600; padding: .25rem 0 .5rem; text-transform: uppercase; letter-spacing: .05em; }
+    .cal-day { text-align: center; padding: .38rem .1rem; font-size: .8rem; color: rgba(232,240,255,.65); border-radius: 6px; cursor: pointer; transition: background .12s, color .12s; user-select: none; }
+    .cal-day:not(.cal-empty):not(.cal-dis):hover { background: rgba(26,127,232,.2); color: white; }
+    .cal-day.cal-empty { cursor: default; pointer-events: none; }
+    .cal-day.cal-dis { color: rgba(232,240,255,.2); cursor: not-allowed; pointer-events: none; }
+    .cal-day.cal-today { color: #3B9BFF; font-weight: 700; }
+    .cal-day.cal-sel { background: #1A7FE8 !important; color: white !important; font-weight: 700; box-shadow: 0 2px 8px rgba(26,127,232,.4); }
   </style>
 </head>
 <body>
@@ -236,22 +270,38 @@
           <div>
             <div class="field-label">Nationality</div>
             <select class="form-input" id="nationality">
-              <option value="">Select country</option>
-              <option>United States</option>
-              <option>United Kingdom</option>
-              <option>Australia</option>
-              <option>Canada</option>
-              <option>Germany</option>
-              <option>France</option>
-              <option>Japan</option>
-              <option>UAE</option>
-              <option>India</option>
-              <option>Other</option>
+              <option value="">Select nationality</option>
+              <option>Afghan</option><option>Albanian</option><option>Algerian</option><option>Andorran</option><option>Angolan</option><option>Antiguan / Barbudan</option><option>Argentine</option><option>Armenian</option><option>Australian</option><option>Austrian</option><option>Azerbaijani</option>
+              <option>Bahamian</option><option>Bahraini</option><option>Bangladeshi</option><option>Barbadian</option><option>Belarusian</option><option>Belgian</option><option>Belizean</option><option>Beninese</option><option>Bhutanese</option><option>Bolivian</option><option>Bosnian / Herzegovinian</option><option>Botswanan</option><option>Brazilian</option><option>Bruneian</option><option>Bulgarian</option><option>Burkinabé</option><option>Burundian</option>
+              <option>Cabo Verdean</option><option>Cambodian</option><option>Cameroonian</option><option>Canadian</option><option>Central African</option><option>Chadian</option><option>Chilean</option><option>Chinese</option><option>Colombian</option><option>Comoran</option><option>Congolese (DRC)</option><option>Congolese (Republic)</option><option>Costa Rican</option><option>Croatian</option><option>Cuban</option><option>Cypriot</option><option>Czech</option>
+              <option>Danish</option><option>Djiboutian</option><option>Dominican (Dominica)</option><option>Dominican (Dominican Republic)</option>
+              <option>Ecuadorian</option><option>Egyptian</option><option>Salvadoran</option><option>Equatorial Guinean</option><option>Eritrean</option><option>Estonian</option><option>Eswatini</option><option>Ethiopian</option>
+              <option>Fijian</option><option>Finnish</option><option>French</option>
+              <option>Gabonese</option><option>Gambian</option><option>Georgian</option><option>German</option><option>Ghanaian</option><option>Greek</option><option>Grenadian</option><option>Guatemalan</option><option>Guinean</option><option>Guinea-Bissauan</option><option>Guyanese</option>
+              <option>Haitian</option><option>Honduran</option><option>Hungarian</option>
+              <option>Icelandic</option><option>Indian</option><option>Indonesian</option><option>Iranian</option><option>Iraqi</option><option>Irish</option><option>Israeli</option><option>Italian</option>
+              <option>Jamaican</option><option>Japanese</option><option>Jordanian</option>
+              <option>Kazakhstani</option><option>Kenyan</option><option>Kiribati</option><option>Kuwaiti</option><option>Kyrgyz</option>
+              <option>Laotian</option><option>Latvian</option><option>Lebanese</option><option>Lesothan</option><option>Liberian</option><option>Libyan</option><option>Liechtensteiner</option><option>Lithuanian</option><option>Luxembourger</option>
+              <option>Malagasy</option><option>Malawian</option><option>Malaysian</option><option>Maldivian</option><option>Malian</option><option>Maltese</option><option>Marshallese</option><option>Mauritanian</option><option>Mauritian</option><option>Mexican</option><option>Micronesian</option><option>Moldovan</option><option>Monégasque</option><option>Mongolian</option><option>Montenegrin</option><option>Moroccan</option><option>Mozambican</option><option>Myanmar / Burmese</option>
+              <option>Namibian</option><option>Nauruan</option><option>Nepali</option><option>Dutch</option><option>New Zealander</option><option>Nicaraguan</option><option>Nigerien</option><option>Nigerian</option><option>North Korean</option><option>North Macedonian</option><option>Norwegian</option>
+              <option>Omani</option>
+              <option>Pakistani</option><option>Palauan</option><option>Palestinian</option><option>Panamanian</option><option>Papua New Guinean</option><option>Paraguayan</option><option>Peruvian</option><option>Filipino</option><option>Polish</option><option>Portuguese</option>
+              <option>Qatari</option>
+              <option>Romanian</option><option>Russian</option><option>Rwandan</option>
+              <option>Kittitian / Nevisian</option><option>Saint Lucian</option><option>Vincentian</option><option>Samoan</option><option>San Marinese</option><option>São Toméan</option><option>Saudi Arabian</option><option>Senegalese</option><option>Serbian</option><option>Seychellois</option><option>Sierra Leonean</option><option>Singaporean</option><option>Slovak</option><option>Slovenian</option><option>Solomon Islander</option><option>Somali</option><option>South African</option><option>South Korean</option><option>South Sudanese</option><option>Spanish</option><option>Sri Lankan</option><option>Sudanese</option><option>Surinamese</option><option>Swedish</option><option>Swiss</option><option>Syrian</option>
+              <option>Taiwanese</option><option>Tajik</option><option>Tanzanian</option><option>Thai</option><option>Timorese</option><option>Togolese</option><option>Tongan</option><option>Trinidadian / Tobagonian</option><option>Tunisian</option><option>Turkish</option><option>Turkmen</option><option>Tuvaluan</option>
+              <option>Ugandan</option><option>Ukrainian</option><option>Emirati</option><option>British</option><option>American</option><option>Uruguayan</option><option>Uzbek</option>
+              <option>Ni-Vanuatu</option><option>Vatican / Holy See</option><option>Venezuelan</option><option>Vietnamese</option>
+              <option>Yemeni</option>
+              <option>Zambian</option><option>Zimbabwean</option>
             </select>
           </div>
           <div>
             <div class="field-label">Date of birth</div>
-            <input type="date" id="dob" class="form-input" />
+            <div class="cal-wrap" id="dob-wrap">
+              <input type="hidden" id="dob" />
+            </div>
           </div>
         </div>
       </div>
@@ -304,6 +354,10 @@
               <option>Bangkok, Thailand</option>
               <option>Sydney, Australia</option>
               <option>Rome, Italy</option>
+              <option>Accra, Ghana</option>
+              <option>Essaouira, Morocco</option>
+              <option>Lagos, Nigeria</option>
+              <option>Casablanca, Morocco</option>
             </select>
             <div class="field-error-msg">Please select a destination.</div>
           </div>
@@ -313,12 +367,16 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div id="depart-field">
             <div class="field-label">Departure date *</div>
-            <input type="date" id="depart-date" class="form-input" />
+            <div class="cal-wrap" id="depart-wrap">
+              <input type="hidden" id="depart-date" />
+            </div>
             <div class="field-error-msg">Please select a departure date.</div>
           </div>
           <div>
             <div class="field-label">Return date (optional)</div>
-            <input type="date" id="return-date" class="form-input" />
+            <div class="cal-wrap" id="return-wrap">
+              <input type="hidden" id="return-date" />
+            </div>
           </div>
         </div>
 
@@ -504,12 +562,15 @@
     function setFieldError(fieldId, inputId, show) {
       const wrap = document.getElementById(fieldId);
       const input = document.getElementById(inputId);
+      // For calendar date-pickers the real input is hidden; show error on the trigger button
+      const calBtn = input && input.parentElement ? input.parentElement.querySelector('.cal-trigger') : null;
+      const target = calBtn || input;
       if (show) {
         wrap.classList.add('show-error');
-        input.classList.add('field-required');
+        if (target) target.classList.add('field-required');
       } else {
         wrap.classList.remove('show-error');
-        input.classList.remove('field-required');
+        if (target) target.classList.remove('field-required');
       }
     }
 
@@ -768,6 +829,87 @@
         document.getElementById(id).classList.remove('field-required');
       });
     });
+
+    // ── Calendar Date Picker ───────────────────────────────────────────────────
+    class DatePicker {
+      constructor(wrapperId, inputId, opts) {
+        this.wrap  = document.getElementById(wrapperId);
+        this.input = document.getElementById(inputId);
+        this.opts  = opts || {};
+        this.today = new Date(); this.today.setHours(0,0,0,0);
+        this.view  = new Date(this.today.getFullYear(), this.today.getMonth(), 1);
+        this.sel   = null;
+        if (this.wrap && this.input) this._init();
+      }
+      _init() {
+        // Icon
+        const icon = document.createElement('span');
+        icon.className = 'cal-icon';
+        icon.innerHTML = '<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+        // Trigger button
+        this.btn = document.createElement('button');
+        this.btn.type = 'button';
+        this.btn.className = 'cal-trigger';
+        this.btn.textContent = this.opts.placeholder || 'Select date';
+        // Popup
+        this.popup = document.createElement('div');
+        this.popup.className = 'cal-popup';
+        this.wrap.appendChild(icon);
+        this.wrap.appendChild(this.btn);
+        this.wrap.appendChild(this.popup);
+        this.btn.addEventListener('click', e => { e.stopPropagation(); this._toggle(); });
+        this.popup.addEventListener('click', e => e.stopPropagation());
+        document.addEventListener('click', () => this._close());
+        this._render();
+      }
+      _toggle() { this.popup.classList.contains('open') ? this._close() : this._open(); }
+      _open()   { this.popup.classList.add('open'); }
+      _close()  { this.popup.classList.remove('open'); }
+      _render() {
+        const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        const DN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+        const y = this.view.getFullYear(), m = this.view.getMonth();
+        const fd = new Date(y,m,1).getDay(), dim = new Date(y,m+1,0).getDate();
+        let h = `<div class="cal-header">
+          <button type="button" class="cal-nav" data-d="-1">&#8249;</button>
+          <span class="cal-title">${MN[m]} ${y}</span>
+          <button type="button" class="cal-nav" data-d="1">&#8250;</button>
+        </div><div class="cal-grid">`;
+        DN.forEach(d => h += `<div class="cal-wday">${d}</div>`);
+        for (let i=0; i<fd; i++) h += `<div class="cal-day cal-empty"></div>`;
+        for (let d=1; d<=dim; d++) {
+          const dt = new Date(y,m,d); let c = 'cal-day';
+          if (dt.toDateString() === this.today.toDateString()) c += ' cal-today';
+          if (this.sel && dt.toDateString() === this.sel.toDateString()) c += ' cal-sel';
+          if (this.opts.minToday && dt < this.today) c += ' cal-dis';
+          if (this.opts.maxToday && dt > this.today) c += ' cal-dis';
+          const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          h += `<div class="${c}" data-iso="${iso}">${d}</div>`;
+        }
+        h += `</div>`;
+        this.popup.innerHTML = h;
+        this.popup.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', e => {
+          e.stopPropagation();
+          this.view.setMonth(this.view.getMonth() + parseInt(b.dataset.d));
+          this._render();
+        }));
+        this.popup.querySelectorAll('.cal-day:not(.cal-empty):not(.cal-dis)').forEach(c => c.addEventListener('click', e => {
+          e.stopPropagation();
+          this.sel = new Date(c.dataset.iso + 'T12:00:00');
+          this.input.value = c.dataset.iso;
+          this.btn.textContent = this.sel.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+          this.btn.classList.add('filled');
+          this.btn.classList.remove('field-required');
+          this.input.dispatchEvent(new Event('change'));
+          this._close(); this._render();
+        }));
+      }
+    }
+
+    // Initialise pickers (script runs at bottom of body, DOM is ready)
+    new DatePicker('dob-wrap',     'dob',         { maxToday: true,  placeholder: 'Select date of birth' });
+    new DatePicker('depart-wrap',  'depart-date', { minToday: true,  placeholder: 'Select departure date' });
+    new DatePicker('return-wrap',  'return-date', { minToday: true,  placeholder: 'Select return date (optional)' });
   </script>
 </body>
 </html>

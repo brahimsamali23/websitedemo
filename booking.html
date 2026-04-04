@@ -166,9 +166,19 @@
     }
     .cal-popup.open { display: block; animation: calIn .15s ease; }
     @keyframes calIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .875rem; }
-    .cal-title { font-family: 'Syne', sans-serif; font-weight: 700; color: white; font-size: .88rem; }
-    .cal-nav { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: rgba(232,240,255,.6); width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; line-height: 1; }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .875rem; gap: .5rem; }
+    .cal-selects { display: flex; gap: .375rem; flex: 1; justify-content: center; }
+    .cal-sel-ctrl {
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+      color: #E8F0FF; border-radius: 8px; padding: .3rem .5rem; font-size: .8rem;
+      font-family: 'Syne', sans-serif; font-weight: 700; cursor: pointer;
+      transition: border-color .15s, background .15s; appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='rgba(232,240,255,0.4)' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .45rem center; padding-right: 1.5rem;
+    }
+    .cal-sel-ctrl:focus { outline: none; border-color: rgba(26,127,232,.6); box-shadow: 0 0 0 2px rgba(26,127,232,.15); }
+    .cal-sel-ctrl option { background: #0A1628; }
+    .cal-nav { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: rgba(232,240,255,.6); width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; line-height: 1; }
     .cal-nav:hover { background: rgba(26,127,232,.18); border-color: rgba(26,127,232,.4); color: #3B9BFF; }
     .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
     .cal-wday { text-align: center; font-size: .63rem; color: rgba(232,240,255,.3); font-weight: 600; padding: .25rem 0 .5rem; text-transform: uppercase; letter-spacing: .05em; }
@@ -242,12 +252,12 @@
           </div>
           <div id="fname-field">
             <div class="field-label">First name *</div>
-            <input type="text" id="first-name" class="form-input" placeholder="e.g. Jordan" autocomplete="given-name" />
+            <input type="text" id="first-name" class="form-input" placeholder="e.g. Jordan" autocomplete="off" />
             <div class="field-error-msg">Please enter your first name.</div>
           </div>
           <div id="lname-field">
             <div class="field-label">Last name *</div>
-            <input type="text" id="last-name" class="form-input" placeholder="e.g. Clarke" autocomplete="family-name" />
+            <input type="text" id="last-name" class="form-input" placeholder="e.g. Clarke" autocomplete="off" />
             <div class="field-error-msg">Please enter your last name.</div>
           </div>
         </div>
@@ -255,22 +265,22 @@
         <!-- Email -->
         <div id="email-field">
           <div class="field-label">Email address *</div>
-          <input type="email" id="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+          <input type="text" id="email" class="form-input" placeholder="you@example.com" autocomplete="off" inputmode="email" />
           <div class="field-error-msg">Please enter a valid email.</div>
         </div>
 
         <!-- Phone -->
         <div>
           <div class="field-label">Phone number</div>
-          <input type="tel" id="phone" class="form-input" placeholder="+1 555 000 0000" autocomplete="tel" />
+          <input type="text" id="phone" class="form-input" placeholder="+1 555 000 0000" autocomplete="off" inputmode="tel" />
         </div>
 
         <!-- Passport -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <div class="field-label">Nationality</div>
-            <select class="form-input" id="nationality">
-              <option value="">Select nationality</option>
+            <input type="text" id="nationality" class="form-input" placeholder="Type or search your nationality…" autocomplete="off" list="nationality-list" />
+            <datalist id="nationality-list">
               <option>Afghan</option><option>Albanian</option><option>Algerian</option><option>Andorran</option><option>Angolan</option><option>Antiguan / Barbudan</option><option>Argentine</option><option>Armenian</option><option>Australian</option><option>Austrian</option><option>Azerbaijani</option>
               <option>Bahamian</option><option>Bahraini</option><option>Bangladeshi</option><option>Barbadian</option><option>Belarusian</option><option>Belgian</option><option>Belizean</option><option>Beninese</option><option>Bhutanese</option><option>Bolivian</option><option>Bosnian / Herzegovinian</option><option>Botswanan</option><option>Brazilian</option><option>Bruneian</option><option>Bulgarian</option><option>Burkinabé</option><option>Burundian</option>
               <option>Cabo Verdean</option><option>Cambodian</option><option>Cameroonian</option><option>Canadian</option><option>Central African</option><option>Chadian</option><option>Chilean</option><option>Chinese</option><option>Colombian</option><option>Comoran</option><option>Congolese (DRC)</option><option>Congolese (Republic)</option><option>Costa Rican</option><option>Croatian</option><option>Cuban</option><option>Cypriot</option><option>Czech</option>
@@ -295,7 +305,7 @@
               <option>Ni-Vanuatu</option><option>Vatican / Holy See</option><option>Venezuelan</option><option>Vietnamese</option>
               <option>Yemeni</option>
               <option>Zambian</option><option>Zimbabwean</option>
-            </select>
+            </datalist>
           </div>
           <div>
             <div class="field-label">Date of birth</div>
@@ -705,8 +715,8 @@
             message: `We've reserved seats for <strong>${wrong} passengers</strong>. If your party is ${original}, please ask your advisor to adjust this before confirmation.`
           };
         },
-        // 6. Wrong cabin class (one tier higher)
-        () => {
+        // 6. Wrong cabin class (one tier higher) — only included for non-Economy bookings
+        ...(bookingData.cabin !== 'Economy' ? [() => {
           const classes = ['Economy', 'Premium Economy', 'Business', 'First Class'];
           const idx = classes.indexOf(bookingData.cabin);
           const wrongClass = idx < classes.length - 1 ? classes[idx + 1] : classes[idx - 1];
@@ -715,7 +725,7 @@
             cabin: wrongClass,
             message: `Your cabin has been recorded as <strong>${wrongClass}</strong> rather than ${bookingData.cabin}. Please confirm the correct class with your advisor.`
           };
-        },
+        }] : []),
       ];
 
       // Pick one at random
@@ -839,19 +849,19 @@
         this.today = new Date(); this.today.setHours(0,0,0,0);
         this.view  = new Date(this.today.getFullYear(), this.today.getMonth(), 1);
         this.sel   = null;
+        this.MN    = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        this.DN    = ['Su','Mo','Tu','We','Th','Fr','Sa'];
         if (this.wrap && this.input) this._init();
       }
+
       _init() {
-        // Icon
         const icon = document.createElement('span');
         icon.className = 'cal-icon';
         icon.innerHTML = '<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
-        // Trigger button
         this.btn = document.createElement('button');
         this.btn.type = 'button';
         this.btn.className = 'cal-trigger';
         this.btn.textContent = this.opts.placeholder || 'Select date';
-        // Popup
         this.popup = document.createElement('div');
         this.popup.className = 'cal-popup';
         this.wrap.appendChild(icon);
@@ -862,51 +872,94 @@
         document.addEventListener('click', () => this._close());
         this._render();
       }
+
       _toggle() { this.popup.classList.contains('open') ? this._close() : this._open(); }
       _open()   { this.popup.classList.add('open'); }
       _close()  { this.popup.classList.remove('open'); }
+
+      _yearRange() {
+        // For dob: 1920 → today's year. For future dates: today's year → today+5.
+        if (this.opts.maxToday) return [1920, this.today.getFullYear()];
+        if (this.opts.minToday) return [this.today.getFullYear(), this.today.getFullYear() + 5];
+        return [1920, this.today.getFullYear() + 5];
+      }
+
       _render() {
-        const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        const DN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
         const y = this.view.getFullYear(), m = this.view.getMonth();
-        const fd = new Date(y,m,1).getDay(), dim = new Date(y,m+1,0).getDate();
-        let h = `<div class="cal-header">
-          <button type="button" class="cal-nav" data-d="-1">&#8249;</button>
-          <span class="cal-title">${MN[m]} ${y}</span>
-          <button type="button" class="cal-nav" data-d="1">&#8250;</button>
-        </div><div class="cal-grid">`;
-        DN.forEach(d => h += `<div class="cal-wday">${d}</div>`);
-        for (let i=0; i<fd; i++) h += `<div class="cal-day cal-empty"></div>`;
-        for (let d=1; d<=dim; d++) {
-          const dt = new Date(y,m,d); let c = 'cal-day';
+        const fd = new Date(y, m, 1).getDay(), dim = new Date(y, m + 1, 0).getDate();
+        const [minY, maxY] = this._yearRange();
+
+        // Build month select
+        let monthSel = `<select class="cal-sel-ctrl" data-ctrl="month">`;
+        this.MN.forEach((name, i) => {
+          monthSel += `<option value="${i}"${i === m ? ' selected' : ''}>${name}</option>`;
+        });
+        monthSel += `</select>`;
+
+        // Build year select
+        let yearSel = `<select class="cal-sel-ctrl" data-ctrl="year">`;
+        for (let yr = maxY; yr >= minY; yr--) {
+          yearSel += `<option value="${yr}"${yr === y ? ' selected' : ''}>${yr}</option>`;
+        }
+        yearSel += `</select>`;
+
+        // Day grid
+        let grid = `<div class="cal-grid">`;
+        this.DN.forEach(d => { grid += `<div class="cal-wday">${d}</div>`; });
+        for (let i = 0; i < fd; i++) grid += `<div class="cal-day cal-empty"></div>`;
+        for (let d = 1; d <= dim; d++) {
+          const dt = new Date(y, m, d); let c = 'cal-day';
           if (dt.toDateString() === this.today.toDateString()) c += ' cal-today';
           if (this.sel && dt.toDateString() === this.sel.toDateString()) c += ' cal-sel';
           if (this.opts.minToday && dt < this.today) c += ' cal-dis';
           if (this.opts.maxToday && dt > this.today) c += ' cal-dis';
           const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          h += `<div class="${c}" data-iso="${iso}">${d}</div>`;
+          grid += `<div class="${c}" data-iso="${iso}">${d}</div>`;
         }
-        h += `</div>`;
-        this.popup.innerHTML = h;
+        grid += `</div>`;
+
+        this.popup.innerHTML = `
+          <div class="cal-header">
+            <button type="button" class="cal-nav" data-d="-1">&#8249;</button>
+            <div class="cal-selects">${monthSel}${yearSel}</div>
+            <button type="button" class="cal-nav" data-d="1">&#8250;</button>
+          </div>${grid}`;
+
+        // Month/year select listeners
+        this.popup.querySelectorAll('[data-ctrl]').forEach(sel => {
+          sel.addEventListener('change', e => {
+            e.stopPropagation();
+            if (sel.dataset.ctrl === 'month') this.view.setMonth(parseInt(sel.value));
+            if (sel.dataset.ctrl === 'year')  this.view.setFullYear(parseInt(sel.value));
+            this._render();
+          });
+        });
+
+        // Prev/next arrow listeners
         this.popup.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', e => {
           e.stopPropagation();
           this.view.setMonth(this.view.getMonth() + parseInt(b.dataset.d));
           this._render();
         }));
-        this.popup.querySelectorAll('.cal-day:not(.cal-empty):not(.cal-dis)').forEach(c => c.addEventListener('click', e => {
-          e.stopPropagation();
-          this.sel = new Date(c.dataset.iso + 'T12:00:00');
-          this.input.value = c.dataset.iso;
-          this.btn.textContent = this.sel.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
-          this.btn.classList.add('filled');
-          this.btn.classList.remove('field-required');
-          this.input.dispatchEvent(new Event('change'));
-          this._close(); this._render();
-        }));
+
+        // Day click listeners
+        this.popup.querySelectorAll('.cal-day:not(.cal-empty):not(.cal-dis)').forEach(cell => {
+          cell.addEventListener('click', e => {
+            e.stopPropagation();
+            this.sel = new Date(cell.dataset.iso + 'T12:00:00');
+            this.input.value = cell.dataset.iso;
+            this.btn.textContent = this.sel.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            this.btn.classList.add('filled');
+            this.btn.classList.remove('field-required');
+            this.input.dispatchEvent(new Event('change'));
+            this._close();
+            this._render();
+          });
+        });
       }
     }
 
-    // Initialise pickers (script runs at bottom of body, DOM is ready)
+    // Initialise pickers
     new DatePicker('dob-wrap',     'dob',         { maxToday: true,  placeholder: 'Select date of birth' });
     new DatePicker('depart-wrap',  'depart-date', { minToday: true,  placeholder: 'Select departure date' });
     new DatePicker('return-wrap',  'return-date', { minToday: true,  placeholder: 'Select return date (optional)' });

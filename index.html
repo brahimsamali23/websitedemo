@@ -279,6 +279,41 @@
     .logo-mark {
       background: linear-gradient(135deg, #1A7FE8 0%, #0F5DB5 100%);
     }
+
+    /* ── Globe ── */
+    @keyframes earthRotate {
+      0%   { background-position: 0 center; }
+      100% { background-position: 400px center; }
+    }
+    @keyframes twinkle        { 0%,100% { opacity:0.08; } 50% { opacity:0.9; } }
+    @keyframes twinkle-slow   { 0%,100% { opacity:0.05; } 50% { opacity:0.7; } }
+    @keyframes twinkle-long   { 0%,100% { opacity:0.05; } 50% { opacity:0.8; } }
+    @keyframes twinkle-fast   { 0%,100% { opacity:0.1;  } 50% { opacity:1.0; } }
+
+    .globe-sphere {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      overflow: hidden;
+      background-image: url('https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/globe.jpeg');
+      background-size: cover;
+      background-position: left center;
+      animation: earthRotate 30s linear infinite;
+      box-shadow:
+        0 0 40px rgba(195,244,255,0.08),
+        -5px 0 12px rgba(195,244,255,0.25) inset,
+        15px 2px 30px rgba(0,0,0,0.8) inset,
+        -24px -2px 40px rgba(195,244,255,0.18) inset,
+        200px 0 60px rgba(0,0,0,0.55) inset,
+        120px 0 45px rgba(0,0,0,0.6) inset;
+    }
+    .globe-star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body class="min-h-screen">
@@ -322,15 +357,34 @@
   <!-- ═══════════════════════════════════ HERO ═══════════════════════════════════ -->
   <section class="hero-bg relative min-h-screen flex flex-col items-center justify-center pt-16 overflow-hidden">
 
-    <!-- Background image with overlay -->
-    <div class="absolute inset-0 z-0">
-      <img
-        src="https://placehold.co/1920x1080/0A1628/1A7FE8?text=+"
-        alt=""
-        class="w-full h-full object-cover"
-        style="opacity:0.08; mix-blend-mode: luminosity;"
-      />
-      <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#060D1A]"></div>
+    <!-- Background globe -->
+    <div class="absolute inset-0 z-0 overflow-hidden">
+      <!-- Ambient glow behind globe -->
+      <div class="absolute" style="right:-8%; top:50%; transform:translateY(-50%); width:680px; height:680px; border-radius:50%; background:radial-gradient(ellipse at center, rgba(26,127,232,0.18) 0%, transparent 70%); filter:blur(40px); pointer-events:none;"></div>
+
+      <!-- Globe container -->
+      <div class="absolute" style="right:-6%; top:50%; transform:translateY(-52%); width:620px; height:620px;">
+        <div class="globe-sphere"></div>
+
+        <!-- Stars scattered around the globe -->
+        <div class="globe-star" style="left:-60px; top:80px;  animation:twinkle 3s 0s infinite;"></div>
+        <div class="globe-star" style="left:-90px; top:200px; animation:twinkle-slow 2.8s 0.4s infinite;"></div>
+        <div class="globe-star" style="left:-30px; top:350px; animation:twinkle-long 4.2s 0.8s infinite;"></div>
+        <div class="globe-star" style="left:660px; top:140px; animation:twinkle 3.5s 0.2s infinite;"></div>
+        <div class="globe-star" style="left:640px; top:300px; animation:twinkle-slow 2.5s 1s infinite;"></div>
+        <div class="globe-star" style="left:680px; top:460px; animation:twinkle-long 4s 0.6s infinite;"></div>
+        <div class="globe-star" style="left:200px; top:-70px; animation:twinkle-fast 1.6s 0s infinite;"></div>
+        <div class="globe-star" style="left:420px; top:-50px; animation:twinkle 3s 0.9s infinite;"></div>
+        <div class="globe-star" style="left:100px; top:700px; animation:twinkle-slow 2.2s 0.3s infinite;"></div>
+        <div class="globe-star" style="left:380px; top:710px; animation:twinkle-long 3.8s 0.7s infinite;"></div>
+        <div class="globe-star" style="left:-120px; top:480px; animation:twinkle-fast 1.8s 0.5s infinite;"></div>
+        <div class="globe-star" style="left:720px; top:80px;  animation:twinkle 4s 0.1s infinite;"></div>
+        <div class="globe-star" style="left:750px; top:350px; animation:twinkle-slow 3s 0.8s infinite;" style="width:3px;height:3px;"></div>
+      </div>
+
+      <!-- Gradient overlay to blend globe into page -->
+      <div class="absolute inset-0" style="background: linear-gradient(to right, #060D1A 35%, transparent 65%, #060D1A 95%);"></div>
+      <div class="absolute inset-0 bg-gradient-to-b from-[#060D1A] via-transparent to-[#060D1A]" style="opacity:0.7;"></div>
     </div>
 
     <!-- Hero content -->

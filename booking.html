@@ -1029,6 +1029,10 @@
 
       // Show the warning card with the error message
       document.getElementById('error-message').innerHTML = mistake.message;
+
+      // Expose to chatbot
+      window.flyexCurrentMistake = mistake;
+      window.flyexBookingData    = bookingData;
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1245,7 +1249,7 @@
     new DatePicker('return-wrap',  'return-date', { minToday: true,  placeholder: 'Select return date (optional)' });
   </script>
 
-  <!-- Chatbot -->
-  <script src="https://api.hostifai.tech/api/uploads/hotels/7e5bf0be-c8b1-4bbe-a586-79ff5c04220b/web_chat/7cdce872-9482-4695-b437-bc17b07732b1.js" async></script>
+  <!-- FlyEX Ava Chatbot -->
+  <script src="chatbot.js"></script>
 </body>
 </html>

@@ -143,7 +143,7 @@
       id: 'bookingerror',
       title: 'Error in my confirmation',
       keywords: /error|wrong|incorrect|mistake|doesn't match|not right|discrepan|issue|problem|confirm/,
-      answer: `Please contact us immediately. Errors relating to passenger names, travel dates, passenger count, or cabin class must be corrected before check-in, as they can affect your ability to board. The sooner you report it, the easier it is to correct — often without additional fees.<br><br>I can help you resolve this right now if you'd like.`
+      answer: `I'm sorry to hear you've spotted something unexpected — and you were absolutely right to reach out straight away. Please don't worry; this is exactly what our support team is here for.<br><br>Errors relating to passenger names, travel dates, passenger count, or cabin class must be corrected before check-in, as they can affect your ability to board. The sooner we address it, the easier it is to correct — and in most cases this can be resolved without any additional fees.<br><br>I can help you sort this out right now if you'd like.`
     },
     /* ── Cancellation / refund ── */
     {
@@ -191,12 +191,20 @@
     catch(_) { return iso; }
   }
 
-  /* ── 6 error-specific KB messages ─────────────────────────────── */
+  /* ── 6 error-specific KB messages — emotionally informed by KB §4 & §5 ── */
   const ERR_EXPLAIN = {
-    name: `I can see that the passenger name recorded on your confirmation doesn't exactly match the name on your passport. This is important to correct before check-in — airlines require your name to match your travel documents exactly. Even a single character difference can prevent you from boarding.<br><br>Errors relating to passenger names must be corrected as soon as possible, as they can affect your ability to board. The sooner you report it, the easier it is to correct — often without additional fees.`,
-    date: `I can see that the departure date on your confirmation doesn't match the date you selected during booking. Even a single day's difference can result in a missed flight, so this needs to be corrected immediately.<br><br>Please contact us immediately — errors relating to travel dates must be corrected before check-in. The sooner you report it, the easier it is to correct without additional fees.`,
-    pax:  `The number of passengers recorded in your booking is one more than what you selected. This could result in unnecessary seat reservations and billing discrepancies that will need to be resolved before your travel date.<br><br>Errors relating to passenger count must be corrected before check-in. I can help you get this sorted right now.`,
-    cabin:`The cabin class on your confirmation doesn't match what you selected during booking. This can affect your seating, baggage allowance, and in-flight services — and may result in a cost difference that needs to be reconciled.<br><br>I can help you get this corrected straight away.`,
+    name: `I completely understand how unsettling it can be to spot something unexpected on your confirmation — and you were absolutely right to reach out straight away.<br><br>
+           The passenger name recorded doesn't match your passport exactly. Airlines require your name to match your travel documents to the letter, and even a small difference can affect your ability to board. Please don't worry though — this is precisely why our support team is here, and the sooner we address it, the easier it is to correct, often without any additional fees.<br><br>
+           You're in good hands. I can get this corrected for you right now.`,
+    date: `I can imagine how alarming it must be to see a date on your confirmation that doesn't match what you selected — you were absolutely right to flag this immediately.<br><br>
+           The departure date recorded doesn't reflect your chosen travel date. Even a single day's difference can lead to a missed flight, so it's important we act on this quickly. The good news is that you've caught it in time, and the sooner we address it, the easier it is to correct — often without additional fees.<br><br>
+           Please don't worry — I'm going to help you get this sorted right now.`,
+    pax:  `I understand how confusing it can be to see an unexpected change to your passenger count, especially when you've planned your trip carefully. You were right to question it.<br><br>
+           The number of passengers recorded in your booking is one more than what you selected. Left uncorrected, this could lead to unnecessary seat reservations and billing discrepancies before your travel date. The important thing is that you've noticed it, and the sooner we address it, the easier it is to resolve — usually without any additional cost.<br><br>
+           I can take care of this for you right now.`,
+    cabin:`That's completely understandable — your cabin class shapes your entire journey experience, from seating and baggage allowance to in-flight services, and it should reflect exactly what you chose.<br><br>
+           The cabin class on your confirmation doesn't match your selection. This could affect your entitlements on board and may need to be reconciled before your flight. You were right to reach out — the sooner we correct it, the better, and it's usually straightforward to fix.<br><br>
+           You're in good hands. Let me get this sorted for you.`,
   };
 
   /* ══════════════════════════════════════════════════════════════════
@@ -442,7 +450,7 @@
 
       // Hard intents
       if (/agent|human|person|speak to|call|phone|representative/.test(t)) { this.handoff(); return; }
-      if (/thank|thanks|great|perfect|all good|no more|bye|goodbye|sorted/.test(t)) { this.wrapUp(); return; }
+      if (/thank|thanks|great|perfect|all good|no more|bye|goodbye|sorted|no that.s|that.s all|nothing else/.test(t)) { this.wrapUp(); return; }
 
       // Error / booking problem intent → direct to fix flow
       if (/error|wrong|incorrect|mistake|doesn.t match|not right|discrepan|issue|problem|name.*wrong|date.*wrong|passenger.*wrong|cabin.*wrong|fix|correct my/.test(t)) {
@@ -469,7 +477,7 @@
       if (match) { this.kbAnswer(match.id); return; }
 
       // Fallback
-      this.say(`I want to make sure I help you correctly — could you tell me a bit more, or choose from the options below?`, T_SHORT)
+      this.say(`I want to make sure I give you exactly the right help — could you tell me a little more about what you need? Or feel free to choose from the options below and I'll take it from there.`, T_SHORT)
         .then(() => this.mainMenu());
     }
 
@@ -479,12 +487,12 @@
       const hasMistake = !!window.flyexCurrentMistake;
       if (hasMistake) {
         this.say(
-          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. How can I help you today?`,
+          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. I'm here to help — whatever's on your mind, you've come to the right place. How can I assist you today?`,
           T_SHORT
         ).then(() => this.mainMenu());
       } else {
         this.say(
-          `Hi! I'm ${BOT_NAME}, your FlyEX support assistant. ✈<br>How can I help you today?`,
+          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. ✈<br><br>Whether you have a question about your booking, need travel advice, or just want to know more about us — I'm here and happy to help. What can I do for you today?`,
           T_SHORT
         ).then(() => this.mainMenu());
       }
@@ -511,9 +519,9 @@
       if (!entry) { this.say(`I don't have specific information on that — please contact our team at <strong>support@flyex.com</strong>.`); return; }
       this.say(entry.answer, T_SHORT).then(() => {
         this.chips([
-          { label: 'That helped, thanks!', fn: () => this.wrapUp() },
-          { label: 'Ask something else',   fn: () => { this.say('Of course! What else can I help you with?', T_SHORT).then(() => this.mainMenu()); } },
-          { label: 'Talk to an agent',     fn: () => this.handoff() },
+          { label: 'That helped, thank you!', fn: () => this.wrapUp() },
+          { label: 'I have another question', fn: () => { this.say('Of course — I\'m happy to help. What else is on your mind?', T_SHORT).then(() => this.mainMenu()); } },
+          { label: 'Talk to an agent',        fn: () => this.handoff() },
         ]);
       });
     }
@@ -534,30 +542,30 @@
     startFix() {
       this.state = S.ASK_REF;
       this.say(
-        `No problem at all — I can get this corrected for you right now. 😊<br><br>To verify your booking, could you please confirm your <strong>booking reference</strong>? You'll find it displayed at the top of your confirmation.`,
+        `Not to worry — you've done exactly the right thing by reaching out, and I'm going to take care of this for you right now. 😊<br><br>To verify your booking, could you please confirm your <strong>booking reference</strong>? You'll find it at the top of your confirmation page.`,
         T_SHORT
       ).then(() => {
         this.inp.placeholder = 'Enter booking reference…';
         this.chips([
-          { label: 'Reference confirmed ✓', fn: () => { this.state = S.VERIFYING; this.verify(); } },
+          { label: 'I can see it — confirmed ✓', fn: () => { this.state = S.VERIFYING; this.verify(); } },
         ]);
       });
     }
 
     verify() {
       this.inp.placeholder = 'Type a message…';
-      this.say('Thank you! Let me pull up your booking now…', T_SHORT)
-        .then(() => this.say('I\'ve located your booking and identified the discrepancy. Reviewing the details…', T_LONG))
+      this.say('Thank you — I really appreciate your patience. Let me locate your booking now…', T_SHORT)
+        .then(() => this.say('I\'ve found your booking. Give me just a moment while I review the confirmation details carefully…', T_LONG))
         .then(() => {
           const m = window.flyexCurrentMistake;
           this.state = S.OFFER_FIX;
           this.say(
-            `I can confirm the issue: there is an error in the <strong>${errLabel(m)}</strong> recorded on your confirmation. I have everything I need to apply the correction immediately.<br><br>Shall I go ahead and update your booking now?`,
+            `I\'ve identified the discrepancy — there is indeed an error in the <strong>${errLabel(m)}</strong> recorded on your confirmation. I want to reassure you that this is something we can correct immediately, and your booking reference will remain valid throughout.<br><br>Shall I go ahead and apply the correction now?`,
             T_SHORT
           ).then(() => {
             this.chips([
-              { label: 'Yes, please correct it', fn: () => this.applyFix() },
-              { label: 'No, I\'ll call instead',  fn: () => this.handoff() },
+              { label: 'Yes, please fix it now', fn: () => this.applyFix() },
+              { label: 'I\'d prefer to call',    fn: () => this.handoff() },
             ]);
           });
         });
@@ -565,12 +573,12 @@
 
     applyFix() {
       this.state = S.FIXING;
-      this.say('Applying the correction to your booking now…', T_SHORT).then(() => {
+      this.say('Wonderful — leave it with me. Applying the correction to your booking right now…', T_SHORT).then(() => {
         this.patchDOM();
         const m = window.flyexCurrentMistake;
         const cv = correctValue(m, window.flyexBookingData);
         this.say(
-          `✓ Done! Your <strong>${errLabel(m)}</strong> has been successfully corrected${cv ? ` to <strong>${cv}</strong>` : ''}.<br><br>Your booking now accurately reflects the details you provided. You can see the updated confirmation above.`,
+          `✓ All done! I\'m pleased to confirm that your <strong>${errLabel(m)}</strong> has been successfully corrected${cv ? ` to <strong>${cv}</strong>` : ''}.<br><br>Your booking now fully reflects the details you provided. You can see the updated confirmation above — please do take a moment to review it. We\'re sorry for any concern this may have caused, and thank you for bringing it to our attention so promptly.`,
           T_LONG, { ok: true }
         ).then(() => {
           this.state = S.RESOLVED;
@@ -578,7 +586,7 @@
           window.flyexCurrentMistake = null;
           this.chips([
             { label: 'Great, thank you! 🙌',  fn: () => this.wrapUp() },
-            { label: 'Ask another question',  fn: () => { this.say('Of course! What else can I help with?', T_SHORT).then(() => { this.state = S.MENU; this.mainMenu(); }); } },
+            { label: 'I have another question', fn: () => { this.say('Of course — I\'m happy to help with anything else. What\'s on your mind?', T_SHORT).then(() => { this.state = S.MENU; this.mainMenu(); }); } },
           ]);
         });
       });
@@ -610,17 +618,17 @@
       }
     }
 
-    /* ── Handoff (KB § 5 escalation) ────────────────────────────── */
+    /* ── Handoff (KB § 5 escalation — human touch reassurance) ─────── */
     handoff() {
       this.say(
-        `Of course — here's how to reach a FlyEX advisor directly:<br><br>
-         📞 <strong>+1 (800) 359-3993</strong> — 24/7 for urgent mid-journey issues<br>
-         📧 <strong>support@flyex.com</strong> — response within one business day<br><br>
-         Office hours are <strong>Monday – Friday, 9:00 AM – 5:00 PM</strong>. Please have your booking reference ready when you call.`,
+        `Absolutely — I completely understand, and sometimes there\'s nothing quite like speaking directly with one of our advisors. You\'re in very good hands with our team.<br><br>
+         📞 <strong>+1 (800) 359-3993</strong><br>Available 24/7 for urgent mid-journey situations<br><br>
+         📧 <strong>support@flyex.com</strong><br>We respond within one business day<br><br>
+         Our office hours are <strong>Monday – Friday, 9:00 AM – 5:00 PM</strong>. Please have your booking reference ready — it will help us locate your details quickly and get you the best possible assistance.`,
         T_SHORT
       ).then(() => {
         this.chips([
-          { label: 'Back to menu', fn: () => { this.say('Of course! What can I help with?', T_SHORT).then(() => { this.state = S.MENU; this.mainMenu(); }); } },
+          { label: 'Back to menu', fn: () => { this.say('Of course — I\'m still here if you need anything else. What can I help with?', T_SHORT).then(() => { this.state = S.MENU; this.mainMenu(); }); } },
         ]);
       });
     }
@@ -628,7 +636,7 @@
     /* ── Wrap up ─────────────────────────────────────────────────── */
     wrapUp() {
       this.say(
-        `You're all set! 🎉 If you ever need us again, we're right here. Safe travels with FlyEX! ✈`,
+        `It\'s been a genuine pleasure helping you today. 🎉 You\'re all set — and if anything else comes up before or during your trip, we\'re always here for you. Safe and wonderful travels with FlyEX! ✈`,
         T_SHORT
       );
       this.state = S.DONE;

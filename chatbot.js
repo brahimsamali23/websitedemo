@@ -191,21 +191,88 @@
     catch(_) { return iso; }
   }
 
-  /* ── 6 error-specific KB messages — emotionally informed by KB §4 & §5 ── */
-  const ERR_EXPLAIN = {
-    name: `I completely understand how unsettling it can be to spot something unexpected on your confirmation — and you were absolutely right to reach out straight away.<br><br>
-           The passenger name recorded doesn't match your passport exactly. Airlines require your name to match your travel documents to the letter, and even a small difference can affect your ability to board. Please don't worry though — this is precisely why our support team is here, and the sooner we address it, the easier it is to correct, often without any additional fees.<br><br>
-           You're in good hands. I can get this corrected for you right now.`,
-    date: `I can imagine how alarming it must be to see a date on your confirmation that doesn't match what you selected — you were absolutely right to flag this immediately.<br><br>
-           The departure date recorded doesn't reflect your chosen travel date. Even a single day's difference can lead to a missed flight, so it's important we act on this quickly. The good news is that you've caught it in time, and the sooner we address it, the easier it is to correct — often without additional fees.<br><br>
-           Please don't worry — I'm going to help you get this sorted right now.`,
-    pax:  `I understand how confusing it can be to see an unexpected change to your passenger count, especially when you've planned your trip carefully. You were right to question it.<br><br>
-           The number of passengers recorded in your booking is one more than what you selected. Left uncorrected, this could lead to unnecessary seat reservations and billing discrepancies before your travel date. The important thing is that you've noticed it, and the sooner we address it, the easier it is to resolve — usually without any additional cost.<br><br>
-           I can take care of this for you right now.`,
-    cabin:`That's completely understandable — your cabin class shapes your entire journey experience, from seating and baggage allowance to in-flight services, and it should reflect exactly what you chose.<br><br>
-           The cabin class on your confirmation doesn't match your selection. This could affect your entitlements on board and may need to be reconciled before your flight. You were right to reach out — the sooner we correct it, the better, and it's usually straightforward to fix.<br><br>
-           You're in good hands. Let me get this sorted for you.`,
-  };
+  /* ── 6 error-specific messages — exact scripts from FlyEX Knowledge Base PDF ── */
+  function buildErrMsg(m, bd) {
+    if (!m || !bd) return `I'm sorry to hear something doesn't look right. Please don't worry — I'm here to help and we will get this corrected for you right away.`;
+
+    // Full correct name from booking data
+    const title    = bd.title    ? bd.title + ' '    : '';
+    const first    = bd.firstName || '';
+    const last     = bd.lastName  || '';
+    const fullName = (title + first + ' ' + last).trim() || 'there';
+
+    // Booking reference straight from the confirmation page DOM
+    const ref = document.getElementById('booking-ref')?.textContent?.trim() || 'your booking';
+
+    // Detect first-name vs last-name misspelling:
+    // If displayName starts with the correct first name → the surname was corrupted
+    const isLastNameErr = m.type === 'name' && m.displayName && m.displayName.startsWith(first);
+
+    switch (true) {
+
+      /* ── Error 1: First name misspelling ── */
+      case m.type === 'name' && !isLastNameErr:
+        return `Hello ${fullName},<br><br>
+          I understand how frustrating it must be to spot a mistake in your own name on your booking confirmation, and I am sorry you are dealing with this. Let us get it sorted quickly.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can see that your first name appears to contain a typo. Airlines require your name to match your passport exactly, so this needs to be corrected before you travel.<br><br>
+          I already have your correct details on file — your first name should read <strong>${first}</strong>. Just confirm and I will update your booking right away. You have got a trip to look forward to, and we want to make sure nothing gets in the way of that.`;
+
+      /* ── Error 2: Last name misspelling ── */
+      case m.type === 'name' && isLastNameErr:
+        return `Hello ${fullName},<br><br>
+          I am sorry to see this — finding an error in your booking details is the last thing you want after planning your trip, and I completely understand the concern it brings. We will take care of it right away.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can see that your last name appears to contain a typo, while your first name <strong>${first}</strong> is showing correctly. Airlines check names against your passport at check-in, so even a small difference matters and needs to be fixed before you travel.<br><br>
+          I already have your correct surname on file — it should read <strong>${last}</strong>. Just confirm and I will get this corrected immediately and send you an updated confirmation so you can travel without any worries.`;
+
+      /* ── Error 3: Departure date off by one day ── */
+      case m.type === 'date' && isOneDayOff(m.depart, bd.depart):
+        return `Hello ${fullName},<br><br>
+          I understand how unsettling it is to see a different date on your confirmation than the one you planned your trip around — even one day off can throw everything into question. I am sorry for the stress this has caused.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can see that it is currently showing a departure of <strong>${fmtDate(m.depart)}</strong>, whereas your intended date was <strong>${fmtDate(bd.depart)}</strong>. This needs to be corrected before travel, as an incorrect date will affect your check-in.<br><br>
+          I have your correct departure date on file and can update your booking straight away. Any fees associated with this correction will be waived in full. We will make sure your confirmation reflects exactly what you planned.`;
+
+      /* ── Error 4: Departure date off by one month ── */
+      case m.type === 'date' && !isOneDayOff(m.depart, bd.depart):
+        return `Hello ${fullName},<br><br>
+          I am truly sorry — I can imagine how alarming it must be to see an entirely different month on your booking confirmation. That is a very distressing thing to discover, especially after all the planning that goes into a trip, and I want you to know we are treating this as our top priority.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can confirm it is currently showing a departure in <strong>${monthName(m.depart)}</strong>, whereas your intended travel is in <strong>${monthName(bd.depart)}</strong>. This is urgent, as it affects your flights, accommodation, and any other arrangements tied to your travel dates.<br><br>
+          I have your correct departure date on file — <strong>${fmtDate(bd.depart)}</strong> — and will correct everything without delay. We are very sorry for this, and we will do whatever it takes to put your plans back on track.`;
+
+      /* ── Error 5: Passenger count inflated by one ── */
+      case m.type === 'pax': {
+        const intended  = bd.pax === '5+' ? 5 : parseInt(bd.pax);
+        const displayed = m.pax;
+        return `Hello ${fullName},<br><br>
+          I understand how confusing and disappointing it is to see the wrong number of travellers on your booking — especially when you have planned this trip around a specific group of people. I am sorry for the added worry, and we will fix this for you right away.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can see it is currently showing <strong>${displayed} passengers</strong>, whereas your intended group size is <strong>${intended} ${intended === 1 ? 'passenger' : 'passengers'}</strong>. This affects your seat allocation and the fare on your booking, so it is important to correct before you travel.<br><br>
+          I have your correct group size on file and will update the booking immediately. We want to make sure everything is exactly right for you and your travel companions.`;
+      }
+
+      /* ── Error 6: Cabin class wrong tier ── */
+      case m.type === 'cabin':
+        return `Hello ${fullName},<br><br>
+          I understand how disappointing it is to see the wrong cabin class on your confirmation — that is not the experience you chose and you deserve to have your booking reflect exactly what you selected. I am sorry for the confusion, and we will sort this out for you.<br><br>
+          I have reviewed your booking (Ref: <strong>${ref}</strong>) and can confirm it is currently showing <strong>${m.cabin}</strong>, whereas you originally booked <strong>${bd.cabin}</strong>. We need to correct this to ensure you have the right seating and service on your journey.<br><br>
+          I have your correct cabin class on file — <strong>${bd.cabin}</strong> — and will update your booking straight away. If your selected class is no longer available, I will reach out personally with the best alternatives we can offer.`;
+
+      default:
+        return `Hello ${fullName},<br><br>I'm sorry to see there's a discrepancy in your booking (Ref: <strong>${ref}</strong>). Please don't worry — I'm here to help and will get this corrected for you straight away.`;
+    }
+  }
+
+  /* Helper: true if the two ISO date strings differ by roughly one day (not one month) */
+  function isOneDayOff(wrongIso, correctIso) {
+    try {
+      const diff = Math.abs(new Date(wrongIso + 'T12:00:00') - new Date(correctIso + 'T12:00:00'));
+      return diff <= 2 * 24 * 60 * 60 * 1000; // ≤ 2 days → one-day error
+    } catch(_) { return true; }
+  }
+
+  /* Helper: month name from ISO date string */
+  function monthName(iso) {
+    try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }
+    catch(_) { return iso; }
+  }
 
   /* ══════════════════════════════════════════════════════════════════
      STYLES
@@ -454,21 +521,18 @@
 
       // Error / booking problem intent → direct to fix flow
       if (/error|wrong|incorrect|mistake|doesn.t match|not right|discrepan|issue|problem|name.*wrong|date.*wrong|passenger.*wrong|cabin.*wrong|fix|correct my/.test(t)) {
-        const kbEntry = KB.find(k => k.id === 'bookingerror');
-        this.say(kbEntry.answer, T_SHORT).then(() => {
-          if (window.flyexCurrentMistake) {
-            this.chips([
-              { label: 'Yes, fix it now', fn: () => this.startFix() },
-              { label: 'Explain the error first', fn: () => this.explainErr() },
-              { label: 'Talk to an agent', fn: () => this.handoff() },
-            ]);
-          } else {
+        if (window.flyexCurrentMistake) {
+          // Go straight to the personalised PDF script for this error type
+          this.explainErr();
+        } else {
+          const kbEntry = KB.find(k => k.id === 'bookingerror');
+          this.say(kbEntry.answer, T_SHORT).then(() => {
             this.chips([
               { label: 'Amend my booking', fn: () => this.kbAnswer('amend') },
               { label: 'Talk to an agent', fn: () => this.handoff() },
             ]);
-          }
-        });
+          });
+        }
         return;
       }
 
@@ -502,6 +566,7 @@
       const hasMistake = !!window.flyexCurrentMistake;
       const opts = [];
       if (hasMistake) opts.push({ label: 'There\'s an error in my booking', fn: () => this.explainErr() });
+      else opts.push({ label: 'I have a booking issue', fn: () => this.kbAnswer('bookingerror') });
       opts.push(
         { label: 'Amend my booking',        fn: () => this.kbAnswer('amend') },
         { label: 'Visa & passport help',    fn: () => this.kbAnswer('visa') },
@@ -526,14 +591,15 @@
       });
     }
 
-    /* ── Error explanation (KB § 4 text) ─────────────────────────── */
+    /* ── Error explanation — exact KB PDF scripts per error type ─── */
     explainErr() {
-      const m = window.flyexCurrentMistake;
-      const text = m ? (ERR_EXPLAIN[m.type] || ERR_EXPLAIN.name) : KB.find(k=>k.id==='bookingerror').answer;
+      const m  = window.flyexCurrentMistake;
+      const bd = window.flyexBookingData;
+      const text = m ? buildErrMsg(m, bd) : KB.find(k => k.id === 'bookingerror').answer;
       this.say(text, T_LONG).then(() => {
         this.chips([
-          { label: 'Fix my booking now',  fn: () => this.startFix() },
-          { label: 'Talk to an agent',    fn: () => this.handoff() },
+          { label: 'Yes, please fix my booking', fn: () => this.startFix() },
+          { label: 'Talk to an agent instead',   fn: () => this.handoff() },
         ]);
       });
     }

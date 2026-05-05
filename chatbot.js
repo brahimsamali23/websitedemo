@@ -541,6 +541,11 @@
       if (/do you (like|love|enjoy|have a favou?rite|travel)|what.s your favou?rite|have you (been|visited)|do you ever/.test(t)) { this.smallTalk('personal', t); return; }
       if (/tell me (about yourself|a joke|something interesting|a fun fact)|can you (joke|tell a joke)/.test(t)) { this.smallTalk('fun', t); return; }
 
+      // ── Booking guidance intent ──────────────────────────────────
+      if (/how (do|can|to) (i |we |you )?book|how (do|can) (i|we) (fly|travel|get there)|want to book|make a booking|book a (flight|ticket|trip)|i.?d like to (book|fly|travel)|step.?by.?step|walk me through|guide me|getting started|ready to book|start(ing)? (a |my |the )?booking|new booking|place a booking|how (does|do) (booking|it) work|how (do i|to) (start|begin|make|complete)|i want to (book|fly|travel)/.test(t)) {
+        this.bookingGuide(text); return;
+      }
+
       // Error / booking problem intent → direct to fix flow
       if (/error|wrong|incorrect|mistake|doesn.t match|not right|discrepan|issue|problem|name.*wrong|date.*wrong|passenger.*wrong|cabin.*wrong|fix|correct my/.test(t)) {
         if (window.flyexCurrentMistake) {
@@ -592,6 +597,7 @@
       if (hasMistake) opts.push({ label: 'There\'s an error in my booking', fn: () => this.explainErr() });
       else opts.push({ label: 'I have a booking issue', fn: () => this.kbAnswer('bookingerror') });
       opts.push(
+        { label: 'How do I book a flight?', fn: () => this.bookingGuide() },
         { label: 'Amend my booking',        fn: () => this.kbAnswer('amend') },
         { label: 'Visa & passport help',    fn: () => this.kbAnswer('visa') },
         { label: 'Travel insurance',        fn: () => this.kbAnswer('insurance') },
@@ -728,6 +734,109 @@
         `So glad I could help! Have an absolutely wonderful journey — and remember, we're here 24/7 if anything ever comes up mid-trip. Safe travels! ✈🌍`,
       ]), T_SHORT);
       this.state = S.DONE;
+    }
+
+    /* ── Booking guide ───────────────────────────────────────────── */
+    bookingGuide(rawText = '') {
+      // Try to pull a destination name out of what the user said
+      const destMatch = rawText.match(
+        /(?:to|for|visiting?|flying to|heading to|going to|travel(?:ling)? to|book(?:ing)?(?: a (?:flight|ticket))?(?: to)?)\s+([A-Z][a-z]+(?:[\s,]+[A-Za-z]+)*)/
+      );
+      const dest = destMatch ? destMatch[1].replace(/[.,!?]+$/, '').trim() : null;
+
+      const onBookingPage = !!document.getElementById('page-1');
+
+      const intro = dest
+        ? `${dest} — what a great choice! ✈ Let me walk you through exactly how to book your flight with FlyEX. It takes just a few minutes and I'll be here the whole time if anything comes up.`
+        : `Of course — happy to walk you through it! Booking with FlyEX is quick and straightforward. Here's exactly how it works, step by step:`;
+
+      const guide =
+        `<strong>Step 1 — Your Details</strong><br>` +
+        `Enter your name <em>exactly</em> as it appears on your passport — this is important for check-in. Add your email address (your confirmation will be sent there), phone number, nationality, and date of birth, then click <em>Continue to Flight Info</em>.<br><br>` +
+
+        `<strong>Step 2 — Flight Details</strong><br>` +
+        `• <strong>Flying from:</strong> choose your departure airport — we cover hundreds across Africa, Europe, and the US<br>` +
+        (dest ? `• <strong>Flying to:</strong> select <em>${dest}</em> from the destination list<br>` : `• <strong>Flying to:</strong> pick your destination from the list<br>`) +
+        `• <strong>Departure date:</strong> use the calendar to select your travel date<br>` +
+        `• <strong>Return date:</strong> optional — leave it blank for a one-way ticket<br>` +
+        `• <strong>Passengers & cabin class:</strong> choose how many are travelling and your preferred cabin (Economy through to First Class)<br>` +
+        `• <strong>Special requests:</strong> add anything you need — dietary requirements, wheelchair assistance, seat preferences<br>` +
+        `Then click <em>Review booking</em>.<br><br>` +
+
+        `<strong>Step 3 — Review & Confirm</strong><br>` +
+        `Take a moment to check every detail matches your passport exactly. When you're happy, hit <em>Confirm booking</em> — you'll get a booking reference instantly. One of our advisors will then be in touch to finalise payment. That's it! 🎉`;
+
+      this.say(intro, T_SHORT)
+        .then(() => this.say(guide, T_LONG))
+        .then(() => {
+          const chips = [];
+          if (!onBookingPage) {
+            chips.push({ label: '✈ Take me to Book Now', fn: () => { window.location.href = 'booking.html'; } });
+          }
+          chips.push(
+            { label: 'I have a question about a step', fn: () => this.bookingStepHelp() },
+            { label: 'Visa & passport info',           fn: () => this.kbAnswer('visa') },
+            { label: 'Back to main menu',              fn: () => this.mainMenu() },
+          );
+          this.chips(chips);
+        });
+    }
+
+    /* Follow-up: let user ask about a specific step */
+    bookingStepHelp() {
+      this.say(`No problem — which part would you like help with?`, T_SHORT).then(() => {
+        this.chips([
+          {
+            label: 'Step 1 — Your details',
+            fn: () => this.say(
+              `On Step 1 you need to fill in:<br>` +
+              `• <strong>Name</strong> — exactly as on your passport (title, first name, last name)<br>` +
+              `• <strong>Email</strong> — your booking confirmation goes here<br>` +
+              `• <strong>Phone number</strong> — optional but useful in case we need to reach you<br>` +
+              `• <strong>Nationality & date of birth</strong> — used for passport verification<br><br>` +
+              `Once filled in, click <em>Continue to Flight Info</em> to move on.`,
+              T_SHORT
+            ).then(() => this.chips([
+              { label: 'Next: Step 2',        fn: () => this.chips([{ label: 'Step 2 — Flight details', fn: () => document.querySelector('.fx-chip')?.click() }]) },
+              { label: 'Back to guide',       fn: () => this.bookingGuide() },
+              { label: 'Something else',      fn: () => this.mainMenu() },
+            ])),
+          },
+          {
+            label: 'Step 2 — Flight details',
+            fn: () => this.say(
+              `Step 2 is where you set up your actual flight:<br>` +
+              `• <strong>Flying from</strong> — select your departure airport (we list hundreds across Africa, Europe & the US)<br>` +
+              `• <strong>Flying to</strong> — choose your destination<br>` +
+              `• <strong>Departure date</strong> — required; pick from the calendar<br>` +
+              `• <strong>Return date</strong> — optional; leave blank for a one-way ticket<br>` +
+              `• <strong>Passengers</strong> — how many people are travelling (1 to 5+)<br>` +
+              `• <strong>Cabin class</strong> — Economy, Premium Economy, Business, or First Class<br>` +
+              `• <strong>Special requests</strong> — dietary needs, wheelchair assistance, seat preferences, etc.<br><br>` +
+              `Click <em>Review booking</em> when done.`,
+              T_SHORT
+            ).then(() => this.chips([
+              { label: 'Back to guide',  fn: () => this.bookingGuide() },
+              { label: 'Something else', fn: () => this.mainMenu() },
+            ])),
+          },
+          {
+            label: 'Step 3 — Review & confirm',
+            fn: () => this.say(
+              `Step 3 is your final check before committing:<br>` +
+              `• Review your <strong>passenger details</strong> (name, email, nationality, date of birth)<br>` +
+              `• Review your <strong>flight details</strong> (route, dates, passengers, cabin class)<br>` +
+              `• Make sure everything matches your passport exactly — even a small typo in your name can affect check-in<br><br>` +
+              `Happy with everything? Click <em>Confirm booking</em>. You'll receive a <strong>booking reference</strong> immediately on screen, and a FlyEX advisor will follow up to finalise payment.`,
+              T_SHORT
+            ).then(() => this.chips([
+              { label: 'Back to guide',  fn: () => this.bookingGuide() },
+              { label: 'Something else', fn: () => this.mainMenu() },
+            ])),
+          },
+          { label: 'Back to guide', fn: () => this.bookingGuide() },
+        ]);
+      });
     }
 
     /* ── Small talk / social ─────────────────────────────────────── */

@@ -14,6 +14,7 @@
   /* ── States ─────────────────────────────────────────────────────── */
   const S = {
     IDLE:'idle', MENU:'menu', ASK_REF:'ask_ref',
+    AWAIT_FIX_CONFIRM:'await_fix_confirm',
     VERIFYING:'verifying', OFFER_FIX:'offer_fix',
     FIXING:'fixing', RESOLVED:'resolved', DONE:'done',
   };
@@ -512,7 +513,14 @@
     route(text) {
       const t = text.toLowerCase();
 
-      // State-gated: waiting for booking ref confirmation
+      // State-gated: waiting for fix confirmation (typed "yes" instead of clicking chip)
+      const affirmative = /^(yes|yeah|yep|yup|sure|ok|okay|go ahead|please|confirm|confirmed|do it|fix it|sounds good|absolutely|correct|that.s right|please fix|fix my booking|fix it please)[\s!.]*$/.test(t);
+      if (this.state === S.AWAIT_FIX_CONFIRM) {
+        if (affirmative || /fix|yes|correct|sort|sure/.test(t)) { this.startFix(); return; }
+        if (/agent|call|human|person/.test(t)) { this.handoff(); return; }
+      }
+
+      // State-gated: waiting for booking ref confirmation (any text counts as the ref)
       if (this.state === S.ASK_REF) { this.state = S.VERIFYING; this.verify(); return; }
 
       // Hard intents
@@ -613,6 +621,7 @@
       const bd = window.flyexBookingData;
       const text = m ? buildErrMsg(m, bd) : KB.find(k => k.id === 'bookingerror').answer;
       this.say(text, T_LONG).then(() => {
+        this.state = S.AWAIT_FIX_CONFIRM;
         this.chips([
           { label: 'Yes, please fix my booking', fn: () => this.startFix() },
           { label: 'Talk to an agent instead',   fn: () => this.handoff() },
@@ -640,17 +649,12 @@
         .then(() => this.say('I\'ve found your booking. Give me just a moment while I review the confirmation details carefully…', T_LONG))
         .then(() => {
           const m = window.flyexCurrentMistake;
-          this.state = S.OFFER_FIX;
-          this.say(
-            `I\'ve identified the discrepancy — there is indeed an error in the <strong>${errLabel(m)}</strong> recorded on your confirmation. I want to reassure you that this is something we can correct immediately, and your booking reference will remain valid throughout.<br><br>Shall I go ahead and apply the correction now?`,
+          return this.say(
+            `I\'ve identified the discrepancy — there is an error in the <strong>${errLabel(m)}</strong> on your confirmation. Applying the correction for you right now…`,
             T_SHORT
-          ).then(() => {
-            this.chips([
-              { label: 'Yes, please fix it now', fn: () => this.applyFix() },
-              { label: 'I\'d prefer to call',    fn: () => this.handoff() },
-            ]);
-          });
-        });
+          );
+        })
+        .then(() => this.applyFix());
     }
 
     applyFix() {

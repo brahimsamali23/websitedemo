@@ -17,7 +17,11 @@
     AWAIT_FIX_CONFIRM:'await_fix_confirm',
     VERIFYING:'verifying', OFFER_FIX:'offer_fix',
     FIXING:'fixing', RESOLVED:'resolved', DONE:'done',
+    BOOKING_HELP:'booking_help', ESCALATING:'escalating',
   };
+
+  /* ── Cross-tab agent channel ─────────────────────────────────────── */
+  const CHANNEL = (() => { try { return new BroadcastChannel('flyex-support'); } catch(_) { return null; } })();
 
   /* ══════════════════════════════════════════════════════════════════
      KNOWLEDGE BASE — all text sourced from knowledge-base.html
@@ -347,6 +351,16 @@
       #flyex-ok-banner .ok-body{font-size:.75rem;color:rgba(134,239,172,.75);line-height:1.55}
 
       @media(max-width:420px){#flyex-panel{width:calc(100vw - 32px)}#flyex-widget{right:16px;bottom:16px}}
+
+      .fx-bubble.agent{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);color:#86EFAC}
+      .fx-msg.fx-agent-msg .fx-time{color:rgba(134,239,172,.35)}
+      #flyex-head.agent-mode{background:linear-gradient(135deg,rgba(16,64,32,.6),rgba(15,40,25,.5))}
+      #flyex-head.agent-mode .fx-av{background:linear-gradient(135deg,#16A34A,#15803D)}
+      #flyex-head.agent-mode .fx-hstatus{color:rgba(134,239,172,.55)}
+      .fx-connect-wrap{display:flex;align-items:center;gap:10px;padding:10px 13px;background:rgba(26,127,232,.07);border:1px solid rgba(26,127,232,.18);border-radius:16px;border-bottom-left-radius:4px;color:rgba(232,240,255,.55);font-size:13px}
+      .fx-connect-ring{width:15px;height:15px;border-radius:50%;border:2px solid rgba(26,127,232,.2);border-top-color:#1A7FE8;animation:fx-spin .9s linear infinite;flex-shrink:0}
+      @keyframes fx-spin{to{transform:rotate(360deg)}}
+      .fx-system-msg{align-self:center;font-size:10.5px;color:rgba(232,240,255,.22);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:3px 10px;border-radius:20px;margin:2px 0}
     </style>`);
   }
 
@@ -399,9 +413,12 @@
   ══════════════════════════════════════════════════════════════════ */
   class Bot {
     constructor() {
-      this.state  = S.IDLE;
-      this.isOpen = false;
-      this.autoFlagged = false;
+      this.state          = S.IDLE;
+      this.isOpen         = false;
+      this.autoFlagged    = false;
+      this.chatHistory    = [];
+      this.agentConnected = false;
+      this.escalationTimeout = null;
 
       this.btn   = document.getElementById('flyex-btn');
       this.panel = document.getElementById('flyex-panel');
@@ -413,6 +430,8 @@
       this.btn.addEventListener('click', () => this.toggle());
       this.send.addEventListener('click', () => this.submit());
       this.inp.addEventListener('keydown', e => { if (e.key === 'Enter') this.submit(); });
+
+      if (CHANNEL) CHANNEL.onmessage = (e) => this.handleChannelMsg(e.data);
 
       this.watchConfirmationPage();
     }
@@ -454,6 +473,7 @@
       d.innerHTML = `<div class="fx-bubble${opts.ok?' ok':''}">${html}</div><span class="fx-time">${BOT_NAME} · ${this.now()}</span>`;
       this.msgs.appendChild(d);
       this.scroll();
+      this.chatHistory.push({ role:'bot', text:html, time:this.now() });
     }
 
     addUser(text) {
@@ -462,6 +482,10 @@
       d.innerHTML = `<div class="fx-bubble">${text}</div><span class="fx-time">You · ${this.now()}</span>`;
       this.msgs.appendChild(d);
       this.scroll();
+      this.chatHistory.push({ role:'user', text, time:this.now() });
+      if (this.agentConnected && CHANNEL) {
+        CHANNEL.postMessage({ type:'CUSTOMER_MSG', text, time:this.now() });
+      }
     }
 
     showTyping() {
@@ -506,6 +530,8 @@
       const v = this.inp.value.trim(); if (!v) return;
       this.inp.value = ''; this.clearChips();
       this.addUser(v);
+      // When agent is live or connecting, messages go to the agent — don't route through bot
+      if (this.agentConnected || this.state === S.ESCALATING) return;
       this.route(v);
     }
 
@@ -545,6 +571,11 @@
       if (/how (do|can|to) (i |we |you )?book|how (do|can) (i|we) (fly|travel|get there)|want to book|make a booking|book a (flight|ticket|trip)|i.?d like to (book|fly|travel)|step.?by.?step|walk me through|guide me|getting started|ready to book|start(ing)? (a |my |the )?booking|new booking|place a booking|how (does|do) (booking|it) work|how (do i|to) (start|begin|make|complete)|i want to (book|fly|travel)/.test(t)) {
         this.bookingGuide(text); return;
       }
+
+      // ── Booking step queries — typed or chip, any state ──────────
+      if (/\bstep (1|one|1st|first)\b|(^|\s)(your|my) details(\s|$)|personal (info|details|information)|(what('s| is)|tell me about|help (with|on)) (step (1|one)|my details|the (first|1st) step)|name.*form|form.*name/.test(t)) { this.bookingStepDetail(1); return; }
+      if (/\bstep (2|two|2nd|second)\b|(^|\s)flight (details|info|information)(\s|$)|(what('s| is)|tell me about|help (with|on)) (step (2|two)|flight (details|info)|the (second|2nd) step)|departure airport|which (cabin|class)|number of passengers|flying from|flying to/.test(t)) { this.bookingStepDetail(2); return; }
+      if (/\bstep (3|three|3rd|third)\b|(what('s| is)|tell me about|help (with|on)) (step (3|three)|the (third|3rd|final|last) step|review|confirm)|review (my )?(booking|details)|how (do i|to) confirm|final step|last step/.test(t)) { this.bookingStepDetail(3); return; }
 
       // Error / booking problem intent → direct to fix flow
       if (/error|wrong|incorrect|mistake|doesn.t match|not right|discrepan|issue|problem|name.*wrong|date.*wrong|passenger.*wrong|cabin.*wrong|fix|correct my/.test(t)) {
@@ -710,19 +741,159 @@
       }
     }
 
-    /* ── Handoff (KB § 5 escalation — human touch reassurance) ─────── */
+    /* ── Handoff — offer live agent first, contact details as fallback ── */
     handoff() {
       this.say(
-        `Absolutely — I completely understand, and sometimes there\'s nothing quite like speaking directly with one of our advisors. You\'re in very good hands with our team.<br><br>
-         📞 <strong>+1 (800) 359-3993</strong><br>Available 24/7 for urgent mid-journey situations<br><br>
-         📧 <strong>support@flyex.com</strong><br>We respond within one business day<br><br>
-         Our office hours are <strong>Monday – Friday, 9:00 AM – 5:00 PM</strong>. Please have your booking reference ready — it will help us locate your details quickly and get you the best possible assistance.`,
+        `Absolutely — let me get you connected with one of our advisors. We want to make sure you get the best possible support.`,
         T_SHORT
       ).then(() => {
         this.chips([
-          { label: 'Back to menu', fn: () => { this.say('Of course — I\'m still here if you need anything else. What can I help with?', T_SHORT).then(() => { this.state = S.MENU; this.mainMenu(); }); } },
+          { label: '💬 Connect with an agent now', fn: () => this.escalateToAgent() },
+          { label: '📞 Call or email instead',     fn: () => this.showContactInfo() },
         ]);
       });
+    }
+
+    showContactInfo() {
+      this.say(
+        `Here's how to reach us directly:<br><br>` +
+        `📞 <strong>+1 (800) 359-3993</strong><br>Available 24/7 for urgent mid-journey situations<br><br>` +
+        `📧 <strong>support@flyex.com</strong><br>We respond within one business day<br><br>` +
+        `Our office hours are <strong>Monday – Friday, 9:00 AM – 5:00 PM</strong>. Please have your booking reference ready — it helps us locate your details quickly.`,
+        T_SHORT
+      ).then(() => {
+        this.chips([
+          { label: '💬 Connect with an agent instead', fn: () => this.escalateToAgent() },
+          { label: 'Back to menu', fn: () => { this.state = S.MENU; this.mainMenu(); } },
+        ]);
+      });
+    }
+
+    /* ── Live agent escalation ───────────────────────────────────── */
+    escalateToAgent() {
+      this.state = S.ESCALATING;
+      this.clearChips();
+      this.say(`Perfect — give me just a moment while I connect you with one of our advisors. 😊`, T_SHORT)
+        .then(() => {
+          this.showConnecting();
+          const ref = document.getElementById('booking-ref')?.textContent?.trim() || null;
+          const payload = {
+            type: 'SESSION_DATA',
+            bookingData: window.flyexBookingData ? { ...window.flyexBookingData, bookingRef: ref } : null,
+            mistakeData: window.flyexCurrentMistake || null,
+            chatHistory: this.chatHistory,
+          };
+          if (CHANNEL) CHANNEL.postMessage(payload);
+          try { localStorage.setItem('flyex_session', JSON.stringify({ ...payload, timestamp: Date.now() })); } catch(_) {}
+
+          this.escalationTimeout = setTimeout(() => {
+            if (!this.agentConnected) {
+              this.hideConnecting();
+              this.state = S.MENU;
+              this.say(`I'm sorry — all our advisors are currently with other customers. Here's how to reach us in the meantime:`, T_SHORT)
+                .then(() => this.showContactInfo());
+            }
+          }, 45000);
+        });
+    }
+
+    /* ── Channel message handler ─────────────────────────────────── */
+    handleChannelMsg(data) {
+      switch (data.type) {
+        case 'AGENT_JOINED':
+          clearTimeout(this.escalationTimeout);
+          this.hideConnecting();
+          this.agentConnected = true;
+          this.inp.placeholder = 'Reply to your advisor…';
+          this.updateHeaderForAgent(data.agentName || 'Support Agent');
+          this.addSystemMsg(`${data.agentName || 'A FlyEX advisor'} has joined`);
+          this.say(
+            `You're now connected with <strong>${data.agentName || 'a FlyEX advisor'}</strong>. They have your full booking details and chat history — please go ahead. 🙏`,
+            T_SHORT
+          );
+          break;
+        case 'AGENT_MSG':
+          this.hideAgentTyping();
+          this.showAgentMessage(data.text, data.agentName, data.time);
+          break;
+        case 'AGENT_TYPING':
+          if (data.isTyping) this.showAgentTyping(data.agentName);
+          else this.hideAgentTyping();
+          break;
+        case 'AGENT_LEFT':
+          this.agentConnected = false;
+          this.restoreHeader();
+          this.inp.placeholder = 'Type a message…';
+          this.hideAgentTyping();
+          this.addSystemMsg('Session ended by advisor');
+          this.say(
+            `Your advisor has ended this session. I'm still here if you need anything else — don't hesitate to ask. 😊`,
+            T_SHORT
+          ).then(() => {
+            this.state = S.MENU;
+            this.chips([{ label: 'Back to main menu', fn: () => this.mainMenu() }]);
+          });
+          break;
+        case 'APPLY_FIX':
+          this.patchDOM();
+          if (CHANNEL) CHANNEL.postMessage({ type: 'FIX_APPLIED' });
+          break;
+      }
+    }
+
+    /* ── Agent message bubble ────────────────────────────────────── */
+    showAgentMessage(text, agentName, time) {
+      const d = document.createElement('div');
+      d.className = 'fx-msg bot fx-agent-msg';
+      const label = agentName || 'Agent';
+      d.innerHTML = `<div class="fx-bubble agent">${text}</div><span class="fx-time">${label} · ${time || this.now()}</span>`;
+      this.msgs.appendChild(d);
+      this.chatHistory.push({ role:'agent', text, time: this.now() });
+      this.scroll();
+    }
+
+    /* ── Connecting / typing states ──────────────────────────────── */
+    showConnecting() {
+      if (document.getElementById('fx-connecting')) return;
+      const d = document.createElement('div');
+      d.className = 'fx-msg bot'; d.id = 'fx-connecting';
+      d.innerHTML = `<div class="fx-connect-wrap"><div class="fx-connect-ring"></div><span>Connecting you with an advisor…</span></div>`;
+      this.msgs.appendChild(d); this.scroll();
+    }
+    hideConnecting() { document.getElementById('fx-connecting')?.remove(); }
+
+    showAgentTyping(name) {
+      if (document.getElementById('fx-agent-typ')) return;
+      const d = document.createElement('div');
+      d.className = 'fx-msg bot fx-typing'; d.id = 'fx-agent-typ';
+      d.innerHTML = `<div class="fx-bubble agent"><div class="fx-dots"><span></span><span></span><span></span></div></div><span class="fx-time">${name || 'Agent'} is typing…</span>`;
+      this.msgs.appendChild(d); this.scroll();
+    }
+    hideAgentTyping() { document.getElementById('fx-agent-typ')?.remove(); }
+
+    addSystemMsg(text) {
+      const d = document.createElement('div');
+      d.className = 'fx-system-msg';
+      d.textContent = text;
+      this.msgs.appendChild(d); this.scroll();
+    }
+
+    /* ── Header swap ─────────────────────────────────────────────── */
+    updateHeaderForAgent(name) {
+      const head = document.getElementById('flyex-head');
+      if (head) head.classList.add('agent-mode');
+      const n = head?.querySelector('.fx-hname');
+      if (n) n.textContent = `${name} · FlyEX Support`;
+      const s = head?.querySelector('.fx-hstatus');
+      if (s) s.textContent = 'Agent connected';
+    }
+    restoreHeader() {
+      const head = document.getElementById('flyex-head');
+      if (head) head.classList.remove('agent-mode');
+      const n = head?.querySelector('.fx-hname');
+      if (n) n.textContent = `${BOT_NAME} · FlyEX Support`;
+      const s = head?.querySelector('.fx-hstatus');
+      if (s) s.textContent = 'Online · Replies instantly';
     }
 
     /* ── Wrap up ─────────────────────────────────────────────────── */
@@ -769,72 +940,59 @@
       this.say(intro, T_SHORT)
         .then(() => this.say(guide, T_LONG))
         .then(() => {
+          this.state = S.BOOKING_HELP;
           const chips = [];
           if (!onBookingPage) {
             chips.push({ label: '✈ Take me to Book Now', fn: () => { window.location.href = 'booking.html'; } });
           }
           chips.push(
-            { label: 'I have a question about a step', fn: () => this.bookingStepHelp() },
-            { label: 'Visa & passport info',           fn: () => this.kbAnswer('visa') },
-            { label: 'Back to main menu',              fn: () => this.mainMenu() },
+            { label: 'Step 1 — Your details',    fn: () => this.bookingStepDetail(1) },
+            { label: 'Step 2 — Flight details',  fn: () => this.bookingStepDetail(2) },
+            { label: 'Step 3 — Review & confirm',fn: () => this.bookingStepDetail(3) },
+            { label: 'Back to main menu',        fn: () => this.mainMenu() },
           );
           this.chips(chips);
         });
     }
 
-    /* Follow-up: let user ask about a specific step */
-    bookingStepHelp() {
-      this.say(`No problem — which part would you like help with?`, T_SHORT).then(() => {
+    /* Step detail — called from chips AND from typed input */
+    bookingStepDetail(n) {
+      const content = {
+        1:
+          `<strong>Step 1 — Your Details</strong><br><br>` +
+          `• <strong>Title, First name, Last name</strong> — enter exactly as on your passport; airlines check this at check-in<br>` +
+          `• <strong>Email address</strong> — your booking confirmation is sent here, so double-check it<br>` +
+          `• <strong>Phone number</strong> — optional, but useful if we need to reach you urgently<br>` +
+          `• <strong>Nationality</strong> — start typing to search; used for visa checks<br>` +
+          `• <strong>Date of birth</strong> — select from the calendar that appears<br><br>` +
+          `Once everything's filled in, click <em>Continue to Flight Info</em> to move on.`,
+        2:
+          `<strong>Step 2 — Flight Details</strong><br><br>` +
+          `• <strong>Flying from</strong> — choose your departure airport from our list covering Africa, Europe, and the US<br>` +
+          `• <strong>Flying to</strong> — select your destination (Tokyo, Paris, Lagos, Bali, and more)<br>` +
+          `• <strong>Departure date</strong> — required; tap the calendar to pick your travel date<br>` +
+          `• <strong>Return date</strong> — optional; leave it blank if you only need a one-way ticket<br>` +
+          `• <strong>Passengers</strong> — select how many people are travelling (1 to 5+)<br>` +
+          `• <strong>Cabin class</strong> — Economy, Premium Economy, Business Class, or First Class<br>` +
+          `• <strong>Special requests</strong> — dietary requirements, wheelchair assistance, seat preferences, etc. (all optional)<br><br>` +
+          `Click <em>Review booking</em> when you're happy with everything.`,
+        3:
+          `<strong>Step 3 — Review & Confirm</strong><br><br>` +
+          `This is your final check before the booking is placed:<br><br>` +
+          `• Review your <strong>passenger details</strong> — name, email, nationality, date of birth<br>` +
+          `• Review your <strong>flight details</strong> — route, dates, number of passengers, cabin class<br>` +
+          `• Make sure everything matches your passport exactly — even a small typo in your name can cause issues at check-in<br><br>` +
+          `Happy with everything? Hit <em>Confirm booking</em>. You'll receive a <strong>booking reference</strong> on screen immediately, and a FlyEX advisor will be in touch to finalise payment. 🎉`,
+      };
+
+      this.state = S.BOOKING_HELP;
+      this.say(content[n], T_SHORT).then(() => {
+        const other = [1, 2, 3].filter(i => i !== n);
         this.chips([
-          {
-            label: 'Step 1 — Your details',
-            fn: () => this.say(
-              `On Step 1 you need to fill in:<br>` +
-              `• <strong>Name</strong> — exactly as on your passport (title, first name, last name)<br>` +
-              `• <strong>Email</strong> — your booking confirmation goes here<br>` +
-              `• <strong>Phone number</strong> — optional but useful in case we need to reach you<br>` +
-              `• <strong>Nationality & date of birth</strong> — used for passport verification<br><br>` +
-              `Once filled in, click <em>Continue to Flight Info</em> to move on.`,
-              T_SHORT
-            ).then(() => this.chips([
-              { label: 'Next: Step 2',        fn: () => this.chips([{ label: 'Step 2 — Flight details', fn: () => document.querySelector('.fx-chip')?.click() }]) },
-              { label: 'Back to guide',       fn: () => this.bookingGuide() },
-              { label: 'Something else',      fn: () => this.mainMenu() },
-            ])),
-          },
-          {
-            label: 'Step 2 — Flight details',
-            fn: () => this.say(
-              `Step 2 is where you set up your actual flight:<br>` +
-              `• <strong>Flying from</strong> — select your departure airport (we list hundreds across Africa, Europe & the US)<br>` +
-              `• <strong>Flying to</strong> — choose your destination<br>` +
-              `• <strong>Departure date</strong> — required; pick from the calendar<br>` +
-              `• <strong>Return date</strong> — optional; leave blank for a one-way ticket<br>` +
-              `• <strong>Passengers</strong> — how many people are travelling (1 to 5+)<br>` +
-              `• <strong>Cabin class</strong> — Economy, Premium Economy, Business, or First Class<br>` +
-              `• <strong>Special requests</strong> — dietary needs, wheelchair assistance, seat preferences, etc.<br><br>` +
-              `Click <em>Review booking</em> when done.`,
-              T_SHORT
-            ).then(() => this.chips([
-              { label: 'Back to guide',  fn: () => this.bookingGuide() },
-              { label: 'Something else', fn: () => this.mainMenu() },
-            ])),
-          },
-          {
-            label: 'Step 3 — Review & confirm',
-            fn: () => this.say(
-              `Step 3 is your final check before committing:<br>` +
-              `• Review your <strong>passenger details</strong> (name, email, nationality, date of birth)<br>` +
-              `• Review your <strong>flight details</strong> (route, dates, passengers, cabin class)<br>` +
-              `• Make sure everything matches your passport exactly — even a small typo in your name can affect check-in<br><br>` +
-              `Happy with everything? Click <em>Confirm booking</em>. You'll receive a <strong>booking reference</strong> immediately on screen, and a FlyEX advisor will follow up to finalise payment.`,
-              T_SHORT
-            ).then(() => this.chips([
-              { label: 'Back to guide',  fn: () => this.bookingGuide() },
-              { label: 'Something else', fn: () => this.mainMenu() },
-            ])),
-          },
-          { label: 'Back to guide', fn: () => this.bookingGuide() },
+          { label: `Step ${other[0]} — ${['Your details','Flight details','Review & confirm'][other[0]-1]}`, fn: () => this.bookingStepDetail(other[0]) },
+          { label: `Step ${other[1]} — ${['Your details','Flight details','Review & confirm'][other[1]-1]}`, fn: () => this.bookingStepDetail(other[1]) },
+          { label: 'Back to full guide', fn: () => this.bookingGuide() },
+          { label: 'Something else',    fn: () => { this.state = S.MENU; this.mainMenu(); } },
         ]);
       });
     }

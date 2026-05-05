@@ -519,6 +519,20 @@
       if (/agent|human|person|speak to|call|phone|representative/.test(t)) { this.handoff(); return; }
       if (/thank|thanks|great|perfect|all good|no more|bye|goodbye|sorted|no that.s|that.s all|nothing else/.test(t)) { this.wrapUp(); return; }
 
+      // ── Social / small talk ──────────────────────────────────────
+      if (/^(hi+|hey+|hello+|howdy|hiya|yo|sup|greetings|good (morning|afternoon|evening|day))[\s!?.]*$/.test(t)) { this.smallTalk('greeting', t); return; }
+      if (/how (are|r) (you|u)\??|how.s it going|you doing\??|you alright\??|how are things/.test(t)) { this.smallTalk('howAreYou', t); return; }
+      if (/who are you|what are you|are you (a |an )?(bot|robot|ai|human|real|person|chatbot)|are you real|are you human/.test(t)) { this.smallTalk('whoAreYou', t); return; }
+      if (/(what.?s your name|your name|what should i call you|what do i call you)/.test(t)) { this.smallTalk('yourName', t); return; }
+      if (/i.m (good|great|fine|well|doing well|not bad|alright|okay|not too bad|doing great|fantastic|wonderful)/.test(t)) { this.smallTalk('userGood', t); return; }
+      if (/i.m (not great|not good|struggling|having a (rough|bad) day|a bit stressed|a bit worried|tired|exhausted|stressed out|overwhelmed)/.test(t)) { this.smallTalk('userBad', t); return; }
+      if (/i.m (excited|so excited|thrilled|pumped|over the moon)|can.t wait (for|to) (my trip|fly|travel|go)|really looking forward/.test(t)) { this.smallTalk('tripExcited', t); return; }
+      if (/i.m (nervous|anxious|a bit worried|not sure) (about )?(my trip|flying|the flight|travelling)/.test(t)) { this.smallTalk('tripNervous', t); return; }
+      if (/(going to|travelling to|flying to|heading to|off to|trip to|visiting) [a-z]/.test(t)) { this.smallTalk('destination', t); return; }
+      if (/you.?re (great|amazing|helpful|wonderful|lovely|brilliant|fantastic|the best|so kind)|you.?ve been (so |really )?helpful|(thank you so much|you.?re awesome)/.test(t)) { this.smallTalk('compliment', t); return; }
+      if (/do you (like|love|enjoy|have a favou?rite|travel)|what.s your favou?rite|have you (been|visited)|do you ever/.test(t)) { this.smallTalk('personal', t); return; }
+      if (/tell me (about yourself|a joke|something interesting|a fun fact)|can you (joke|tell a joke)/.test(t)) { this.smallTalk('fun', t); return; }
+
       // Error / booking problem intent → direct to fix flow
       if (/error|wrong|incorrect|mistake|doesn.t match|not right|discrepan|issue|problem|name.*wrong|date.*wrong|passenger.*wrong|cabin.*wrong|fix|correct my/.test(t)) {
         if (window.flyexCurrentMistake) {
@@ -548,17 +562,19 @@
     /* ── Greeting (first open) ───────────────────────────────────── */
     greet() {
       this.state = S.MENU;
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
       const hasMistake = !!window.flyexCurrentMistake;
       if (hasMistake) {
-        this.say(
-          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. I'm here to help — whatever's on your mind, you've come to the right place. How can I assist you today?`,
-          T_SHORT
-        ).then(() => this.mainMenu());
+        this.say(pick([
+          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant — and I'm already on it. 😊 Whatever's on your mind, you've come to the right place. How can I help you today?`,
+          `Hey! I'm ${BOT_NAME} from FlyEX. I notice you might have a question about your booking — I'm here and happy to help. What's going on?`,
+        ]), T_SHORT).then(() => this.mainMenu());
       } else {
-        this.say(
-          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. ✈<br><br>Whether you have a question about your booking, need travel advice, or just want to know more about us — I'm here and happy to help. What can I do for you today?`,
-          T_SHORT
-        ).then(() => this.mainMenu());
+        this.say(pick([
+          `Hi there! I'm ${BOT_NAME}, your FlyEX support assistant. ✈<br><br>Booking questions, travel advice, visa info, or just a chat about where you're headed — I'm here for all of it. What can I do for you today?`,
+          `Hey! Welcome to FlyEX — I'm ${BOT_NAME}, your virtual travel companion. 😊<br><br>Whether you need help with a booking or just want to know more about what we offer, fire away. What's on your mind?`,
+          `Hi! Great to have you here. I'm ${BOT_NAME} — FlyEX's support assistant and, unofficially, a travel enthusiast. ✈<br><br>What can I help you with today?`,
+        ]), T_SHORT).then(() => this.mainMenu());
       }
     }
 
@@ -701,11 +717,103 @@
 
     /* ── Wrap up ─────────────────────────────────────────────────── */
     wrapUp() {
-      this.say(
-        `It\'s been a genuine pleasure helping you today. 🎉 You\'re all set — and if anything else comes up before or during your trip, we\'re always here for you. Safe and wonderful travels with FlyEX! ✈`,
-        T_SHORT
-      );
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+      this.say(pick([
+        `It's been a genuine pleasure helping you today. 🎉 You're all set — and if anything else comes up before or during your trip, we're always here. Safe and wonderful travels with FlyEX! ✈`,
+        `Always a pleasure! 😊 You're in great hands — safe travels, and don't hesitate to come back if you need anything at all. FlyEX is rooting for an amazing trip for you. ✈`,
+        `So glad I could help! Have an absolutely wonderful journey — and remember, we're here 24/7 if anything ever comes up mid-trip. Safe travels! ✈🌍`,
+      ]), T_SHORT);
       this.state = S.DONE;
+    }
+
+    /* ── Small talk / social ─────────────────────────────────────── */
+    smallTalk(type, t = '') {
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+      const responses = {
+        greeting: pick([
+          `Hey there! Great to see you — I'm ${BOT_NAME}, your FlyEX support sidekick. What can I do for you today?`,
+          `Hello! 👋 Lovely to have you here. I'm ${BOT_NAME} — whether it's a quick question or something more involved, I've got you. What's on your mind?`,
+          `Hi! Happy you stopped by. I'm ${BOT_NAME}, and helping people with their travel is genuinely my favourite thing. How can I assist?`,
+          `Hey! Welcome to FlyEX — I'm ${BOT_NAME}. Ready to help with bookings, travel questions, or just a good chat. What can I do for you?`,
+        ]),
+        howAreYou: pick([
+          `Doing really well, thanks for asking! Honestly, there's nothing I enjoy more than a good conversation and knowing someone's trip is going to go smoothly. 😄 How about you — all good your end?`,
+          `Brilliant, thanks! Every chat is its own little adventure for me. Are you gearing up for a trip, or is there something I can help you sort out?`,
+          `Great, thank you! I'd be lying if I said I don't love these conversations. How are things with you today?`,
+          `Honestly? Wonderful. I get to talk about travel all day — that's basically a dream. 😄 How are you doing?`,
+        ]),
+        whoAreYou: pick([
+          `I'm ${BOT_NAME} — a virtual support assistant for FlyEX. So yes, I'm an AI, but I promise I'm one of the friendly ones. 😊 I know everything there is to know about our services, and I'm here for bookings, travel questions, or just a chat while you plan your next adventure.`,
+          `Good question! I'm ${BOT_NAME}, FlyEX's support assistant. AI-powered, travel-obsessed, and entirely here for you. What can I help with?`,
+          `I'm ${BOT_NAME} — think of me as your very enthusiastic travel companion who also happens to know all the logistics. AI through and through, but I like to think I've got a human touch. 😊 What brings you here today?`,
+        ]),
+        yourName: pick([
+          `I'm ${BOT_NAME}! Short for… well, just ${BOT_NAME}. 😄 FlyEX's support assistant and unofficial travel enthusiast. What can I do for you?`,
+          `${BOT_NAME} — nice to officially meet you! Your FlyEX virtual support assistant, at your service. How can I help today?`,
+          `${BOT_NAME}. I was going to pick something more dramatic, but it suits me. 😄 What can I help you with?`,
+        ]),
+        userGood: pick([
+          `That's great to hear! 😊 Ready to help with anything travel-related whenever you need — just say the word.`,
+          `Glad to hear it! Nothing beats having a trip to look forward to, right? What can I do for you today?`,
+          `Love to hear it! 😄 So, what brings you to FlyEX today?`,
+        ]),
+        userBad: pick([
+          `I'm really sorry to hear that — I hope I can at least take the travel side of things off your plate. Tell me what's going on and we'll sort it together.`,
+          `Oh no — I'm sorry you're having a tough time. If there's anything with your booking that's adding to the stress, let's deal with that first. What's the situation?`,
+          `I'm sorry to hear that. Let's see if I can make at least one thing a little easier for you today. What do you need?`,
+        ]),
+        tripExcited: pick([
+          `Oh, that's wonderful — I love hearing that! There's something genuinely magical about the lead-up to a trip. Where are you headed?`,
+          `That excitement is completely contagious! ✈ I hope I can help make sure everything goes perfectly for your journey. Is there anything I can look into for you?`,
+          `Now that's what I like to hear! A trip on the horizon is the best kind of news. Is everything looking good with your booking?`,
+          `Oh I love this energy! ✈🌍 Safe to say you've come to the right place. What can I help you with?`,
+        ]),
+        tripNervous: pick([
+          `That's completely understandable — travel can feel like a lot, especially if something's come up with your booking. But you're in exactly the right place, and we'll sort it together. What's going on?`,
+          `I hear you, and I'm really glad you reached out. Tell me what's on your mind and we'll take it one step at a time — that's what I'm here for.`,
+          `Totally normal to feel that way, and honestly the fact you're asking questions in advance puts you well ahead. What's worrying you?`,
+        ]),
+        destination: (() => {
+          const dest = t.match(/(?:going to|travelling to|flying to|heading to|off to|trip to|visiting) ([a-z ]+?)(?:\s|$|[.,!?])/);
+          const place = dest ? dest[1].trim() : null;
+          return pick([
+            place
+              ? `Oh, ${place} — fantastic choice! ✈ Is there anything I can help you with for your journey?`
+              : `Oh, how exciting — there's nothing quite like having a trip to look forward to! Is there anything I can help with?`,
+            `Wonderful! ✈ I hope it's going to be an amazing experience. Is everything looking good with your booking, or is there something you'd like me to check?`,
+            `Lucky you! 🌍 Is there anything I can help you with — visa requirements, travel insurance, or your booking details?`,
+          ]);
+        })(),
+        compliment: pick([
+          `Oh, that genuinely makes my day — thank you so much! It's exactly what I'm here for. 😊 Is there anything else I can help with?`,
+          `You're too kind! It's been a pleasure. Anything else on your mind, or are you all set?`,
+          `That means a lot, truly. I hope your travels are every bit as smooth. Anything else I can do for you?`,
+          `Ha, now you're going to make me blush. 😄 Always happy to help — anything else?`,
+        ]),
+        personal: pick([
+          `Ha — I wish I could say I've been everywhere myself! I don't travel (the perks of being an AI 😄), but I've helped plan enough trips that I feel like I've seen the world vicariously. Do you have somewhere exciting in mind?`,
+          `I'd love to, but airports don't have AI check-in lanes just yet. 😄 I do live for the travel stories though — what's yours?`,
+          `Honestly, my favourite destination is whichever one my travellers are most excited about — it's infectious! Is there a trip you're planning?`,
+        ]),
+        fun: pick([
+          `Oh, you want a fun fact? Here's one: the world's shortest commercial flight is in Scotland — just 1.7 miles, under 2 minutes in the air. You spend more time boarding than flying. 😄 Anything else I can help with?`,
+          `A travel joke? Okay: why don't scientists trust atoms? Because they make up everything — kind of like a budget airline's "included" fees. 😄 What can I actually help you with today?`,
+          `Did you know Heathrow Airport alone handles around 1,300 flights every single day? That's a lot of people trying to find their gate. 😄 What can I do for you?`,
+        ]),
+      };
+
+      const msg = responses[type];
+      if (!msg) return;
+
+      this.say(msg, T_SHORT).then(() => {
+        if (!['compliment'].includes(type)) {
+          this.chips([
+            { label: 'View all options', fn: () => this.mainMenu() },
+            { label: 'Talk to an agent', fn: () => this.handoff() },
+          ]);
+        }
+      });
     }
   }
 

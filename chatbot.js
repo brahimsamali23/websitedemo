@@ -23,6 +23,17 @@
   /* ── Cross-tab agent channel ─────────────────────────────────────── */
   const CHANNEL = (() => { try { return new BroadcastChannel('flyex-support'); } catch(_) { return null; } })();
 
+  /* ── localStorage queue helpers (fallback when BroadcastChannel fails) ── */
+  function queueWrite(key, msg) {
+    try {
+      const q = JSON.parse(localStorage.getItem(key) || '[]');
+      q.push(msg);
+      if (q.length > 200) q.splice(0, q.length - 200);
+      localStorage.setItem(key, JSON.stringify(q));
+    } catch(_) {}
+  }
+  function makeId() { return Date.now() + '_' + Math.random().toString(36).slice(2, 7); }
+
   /* ══════════════════════════════════════════════════════════════════
      KNOWLEDGE BASE — all text sourced from knowledge-base.html
      Each entry has:
@@ -419,6 +430,12 @@
       this.chatHistory    = [];
       this.agentConnected = false;
       this.escalationTimeout = null;
+      this._seen      = new Set();
+      this._pollTimer = null;
+      this._onStorage = (e) => {
+        if (e.key === 'flyex_to_customer') this._processPoll();
+      };
+      window.addEventListener('storage', this._onStorage);
 
       this.btn   = document.getElementById('flyex-btn');
       this.panel = document.getElementById('flyex-panel');
@@ -431,7 +448,11 @@
       this.send.addEventListener('click', () => this.submit());
       this.inp.addEventListener('keydown', e => { if (e.key === 'Enter') this.submit(); });
 
-      if (CHANNEL) CHANNEL.onmessage = (e) => this.handleChannelMsg(e.data);
+      if (CHANNEL) CHANNEL.onmessage = (e) => {
+        const d = e.data;
+        if (d._id) this._seen.add(d._id); // mark seen so localStorage poll skips it
+        this.handleChannelMsg(d);
+      };
 
       this.watchConfirmationPage();
     }
@@ -483,8 +504,10 @@
       this.msgs.appendChild(d);
       this.scroll();
       this.chatHistory.push({ role:'user', text, time:this.now() });
-      if (this.agentConnected && CHANNEL) {
-        CHANNEL.postMessage({ type:'CUSTOMER_MSG', text, time:this.now() });
+      if (this.agentConnected) {
+        const msg = { type:'CUSTOMER_MSG', text, time:this.now(), _id:makeId() };
+        if (CHANNEL) CHANNEL.postMessage(msg);
+        queueWrite('flyex_to_admin', msg);
       }
     }
 
@@ -783,6 +806,7 @@
             mistakeData: window.flyexCurrentMistake || null,
             chatHistory: this.chatHistory,
           };
+          this._startPolling();
           if (CHANNEL) CHANNEL.postMessage(payload);
           try { localStorage.setItem('flyex_session', JSON.stringify({ ...payload, timestamp: Date.now() })); } catch(_) {}
 
@@ -822,6 +846,8 @@
           break;
         case 'AGENT_LEFT':
           this.agentConnected = false;
+          this._stopPolling();
+          try { localStorage.removeItem('flyex_to_customer'); } catch(_) {}
           this.restoreHeader();
           this.inp.placeholder = 'Type a message…';
           this.hideAgentTyping();
@@ -834,10 +860,13 @@
             this.chips([{ label: 'Back to main menu', fn: () => this.mainMenu() }]);
           });
           break;
-        case 'APPLY_FIX':
+        case 'APPLY_FIX': {
           this.patchDOM();
-          if (CHANNEL) CHANNEL.postMessage({ type: 'FIX_APPLIED' });
+          const fa = { type:'FIX_APPLIED', _id:makeId() };
+          if (CHANNEL) CHANNEL.postMessage(fa);
+          queueWrite('flyex_to_admin', fa);
           break;
+        }
       }
     }
 
@@ -894,6 +923,34 @@
       if (n) n.textContent = `${BOT_NAME} · FlyEX Support`;
       const s = head?.querySelector('.fx-hstatus');
       if (s) s.textContent = 'Online · Replies instantly';
+    }
+
+    /* ── localStorage queue polling (fallback transport) ─────────────── */
+    _processPoll() {
+      try {
+        const q = JSON.parse(localStorage.getItem('flyex_to_customer') || '[]');
+        q.forEach(m => {
+          if (!m._id || this._seen.has(m._id)) return;
+          this._seen.add(m._id);
+          this.handleChannelMsg(m);
+        });
+      } catch(_) {}
+    }
+
+    _startPolling() {
+      if (this._pollTimer) return;
+      // Pre-seed seen so we don't replay stale queue entries from previous sessions
+      try {
+        const q = JSON.parse(localStorage.getItem('flyex_to_customer') || '[]');
+        q.forEach(m => { if (m._id) this._seen.add(m._id); });
+      } catch(_) {}
+      this._pollTimer = setInterval(() => this._processPoll(), 300);
+    }
+
+    _stopPolling() {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+      window.removeEventListener('storage', this._onStorage);
     }
 
     /* ── Wrap up ─────────────────────────────────────────────────── */

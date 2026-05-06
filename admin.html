@@ -495,10 +495,11 @@
   let sessionLive   = false;
   let typingTimer   = null;
   let sendingTyping = false;
-  let _custSeen     = new Set();
-  let _pollCustomer = null;
-  let _pollSession  = null;
+  let _custSeen      = new Set();
+  let _pollCustomer  = null;
+  let _pollSession   = null;
   let _lastSessionTs = 0;
+  let _sidebarTs     = 0; // tracks which session's history has been replayed
 
   function queueWrite(key, msg) {
     try {
@@ -544,6 +545,7 @@
       if (!raw) return;
       const d = JSON.parse(raw);
       if (Date.now() - d.timestamp < 30 * 60 * 1000) {
+        _lastSessionTs = d.timestamp; // prevent startSessionPolling from re-showing
         populateSidebar(d);
         showJoinOverlay(d);
       }
@@ -576,6 +578,42 @@
         btn.style.boxShadow  = 'none';
       }
     };
+  }
+
+  /* ════════════════════════════
+     STORAGE EVENT (cross-tab instant delivery — works on file:// in Chrome too)
+  ════════════════════════════ */
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'flyex_session' && e.newValue && !sessionLive) {
+      try {
+        const d = JSON.parse(e.newValue);
+        if (!d.timestamp || Date.now() - d.timestamp > 30 * 60 * 1000) return;
+        if (d.timestamp === _lastSessionTs) return;
+        _lastSessionTs = d.timestamp;
+        populateSidebar(d);
+        showJoinOverlay(d);
+      } catch(_) {}
+    }
+    if (e.key === 'flyex_to_admin') processCustomerQueue();
+  });
+
+  function processCustomerQueue() {
+    try {
+      const q = JSON.parse(localStorage.getItem('flyex_to_admin') || '[]');
+      q.forEach(m => {
+        if (!m._id || _custSeen.has(m._id)) return;
+        _custSeen.add(m._id);
+        if (m.type === 'CUSTOMER_MSG' && sessionLive) appendMsg('customer', m.text, m.time);
+        if (m.type === 'FIX_APPLIED') {
+          appendSystem('✓ Fix applied on customer screen');
+          const btn = document.getElementById('btn-fix');
+          btn.disabled = true;
+          btn.textContent = '✓ Fix Applied';
+          btn.style.background = 'rgba(34,197,94,.15)';
+          btn.style.boxShadow  = 'none';
+        }
+      });
+    } catch(_) {}
   }
 
   /* ════════════════════════════
@@ -634,8 +672,10 @@
 
     document.getElementById('card-qr').style.display = 'block';
 
-    // Replay chat history
-    if (d.chatHistory?.length) {
+    // Replay chat history once per session (guard against double-call)
+    const sessionTs = d.timestamp || 0;
+    if (sessionTs !== _sidebarTs && d.chatHistory?.length) {
+      _sidebarTs = sessionTs;
       d.chatHistory.forEach(msg => appendMsg(msg.role, msg.text, msg.time, true));
       appendSystem('↑ Previous bot conversation');
     }
@@ -820,24 +860,7 @@
       const q = JSON.parse(localStorage.getItem('flyex_to_admin') || '[]');
       q.forEach(m => { if (m._id) _custSeen.add(m._id); });
     } catch(_) {}
-    _pollCustomer = setInterval(() => {
-      try {
-        const q = JSON.parse(localStorage.getItem('flyex_to_admin') || '[]');
-        q.forEach(m => {
-          if (!m._id || _custSeen.has(m._id)) return;
-          _custSeen.add(m._id);
-          if (m.type === 'CUSTOMER_MSG' && sessionLive) appendMsg('customer', m.text, m.time);
-          if (m.type === 'FIX_APPLIED') {
-            appendSystem('✓ Fix applied on customer screen');
-            const btn = document.getElementById('btn-fix');
-            btn.disabled = true;
-            btn.textContent = '✓ Fix Applied';
-            btn.style.background = 'rgba(34,197,94,.15)';
-            btn.style.boxShadow  = 'none';
-          }
-        });
-      } catch(_) {}
-    }, 300);
+    _pollCustomer = setInterval(processCustomerQueue, 300);
   }
 
 })();

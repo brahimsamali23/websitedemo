@@ -497,7 +497,6 @@
   let sendingTyping = false;
   let _custSeen      = new Set();
   let _pollCustomer  = null;
-  let _pollSession   = null;
   let _lastSessionTs = 0;
   let _sidebarTs     = 0; // tracks which session's history has been replayed
 
@@ -530,7 +529,7 @@
     agentName = (pwName.value.trim() || 'Support Agent');
     document.getElementById('agent-name').value = agentName;
     loginScreen.classList.add('out');
-    setTimeout(() => { loginScreen.style.display = 'none'; checkPending(); startSessionPolling(); }, 420);
+    setTimeout(() => { loginScreen.style.display = 'none'; }, 420);
   }
 
   pwBtn.addEventListener('click', doLogin);
@@ -539,16 +538,20 @@
   /* ════════════════════════════
      PENDING SESSION (localStorage)
   ════════════════════════════ */
+  function handleSessionData(d) {
+    if (!d || !d.timestamp) return;
+    if (Date.now() - d.timestamp > 30 * 60 * 1000) return;
+    if (d.timestamp === _lastSessionTs) return;
+    _lastSessionTs = d.timestamp;
+    try { showJoinOverlay(d); } catch(_) {}
+    try { populateSidebar(d); } catch(_) {}
+  }
+
   function checkPending() {
     try {
       const raw = localStorage.getItem('flyex_session');
       if (!raw) return;
-      const d = JSON.parse(raw);
-      if (Date.now() - d.timestamp < 30 * 60 * 1000) {
-        _lastSessionTs = d.timestamp; // prevent startSessionPolling from re-showing
-        populateSidebar(d);
-        showJoinOverlay(d);
-      }
+      handleSessionData(JSON.parse(raw));
     } catch (_) {}
   }
 
@@ -561,10 +564,8 @@
       if (d._id) _custSeen.add(d._id); // mark seen so localStorage poll skips it
       if (d.type === 'SESSION_DATA') {
         const ts = Date.now();
-        _lastSessionTs = ts;
         try { localStorage.setItem('flyex_session', JSON.stringify({ ...d, timestamp: ts })); } catch(_) {}
-        populateSidebar(d);
-        showJoinOverlay(d);
+        handleSessionData({ ...d, timestamp: ts });
       }
       if (d.type === 'CUSTOMER_MSG' && sessionLive) {
         appendMsg('customer', d.text, d.time);
@@ -585,14 +586,7 @@
   ════════════════════════════ */
   window.addEventListener('storage', (e) => {
     if (e.key === 'flyex_session' && e.newValue && !sessionLive) {
-      try {
-        const d = JSON.parse(e.newValue);
-        if (!d.timestamp || Date.now() - d.timestamp > 30 * 60 * 1000) return;
-        if (d.timestamp === _lastSessionTs) return;
-        _lastSessionTs = d.timestamp;
-        populateSidebar(d);
-        showJoinOverlay(d);
-      } catch(_) {}
+      try { handleSessionData(JSON.parse(e.newValue)); } catch(_) {}
     }
     if (e.key === 'flyex_to_admin') processCustomerQueue();
   });
@@ -834,23 +828,14 @@
     catch(_) { return iso; }
   }
 
-  /* ── Session polling — detects new escalations while admin is logged in ── */
-  function startSessionPolling() {
-    clearInterval(_pollSession);
-    _pollSession = setInterval(() => {
-      if (sessionLive) return;
-      try {
-        const raw = localStorage.getItem('flyex_session');
-        if (!raw) return;
-        const d = JSON.parse(raw);
-        if (d.timestamp === _lastSessionTs) return; // already shown
-        if (Date.now() - d.timestamp > 30 * 60 * 1000) return; // expired
-        _lastSessionTs = d.timestamp;
-        populateSidebar(d);
-        showJoinOverlay(d);
-      } catch(_) {}
-    }, 1500);
-  }
+  /* ── Always-on session detector: runs from page load, before login ── */
+  setInterval(() => {
+    if (sessionLive) return;
+    try {
+      const raw = localStorage.getItem('flyex_session');
+      if (raw) handleSessionData(JSON.parse(raw));
+    } catch(_) {}
+  }, 500);
 
   /* ── Customer message polling — fallback when BroadcastChannel fails ── */
   function startCustomerPolling() {
